@@ -1,31 +1,26 @@
 import React from 'react';
-import { ArrowRight, Shield, Users, CreditCard, Store, Smartphone, TrendingUp, Calendar, HandHeart, Lock } from 'lucide-react';
+import { Shield, Users, CreditCard, Store, Smartphone, TrendingUp, Calendar, HandHeart, Lock } from 'lucide-react';
 
 interface FeaturesProps {
   onPageChange?: (page: string) => void;
 }
 
 const Features: React.FC<FeaturesProps> = ({ onPageChange }) => {
-  const handleJoinCircle = () => {
-    if (onPageChange) {
-      onPageChange('dashboard');
-    }
-  };
 
   return (
     <section id="features" className="py-20 bg-gradient-to-br from-emerald-50 via-white to-green-50">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         {/* Section Header */}
-        <div className="text-center mb-16">
-          <div className="inline-flex items-center gap-2 px-4 py-2 bg-emerald-50 border border-emerald-100 rounded-full text-sm font-medium text-emerald-700 mb-6">
-            <div className="w-2 h-2 bg-emerald-500 rounded-full animate-pulse"></div>
+        <div className="text-center mb-12">
+          <div className="inline-flex items-center gap-2 px-3 py-1.5 bg-emerald-50 border border-emerald-100 rounded-full text-xs font-medium text-emerald-700 mb-4">
+            <div className="w-1.5 h-1.5 bg-emerald-500 rounded-full animate-pulse"></div>
             Platform Features
           </div>
-          <h2 className="text-4xl md:text-5xl font-bold text-gray-900 mb-4 tracking-tight">
+          <h2 className="text-2xl md:text-3xl font-bold text-gray-900 mb-3 tracking-tight">
             Revolutionizing Community
             <span className="bg-gradient-to-r from-emerald-500 via-green-500 to-teal-500 bg-clip-text text-transparent"> Finance & Commerce</span>
           </h2>
-          <p className="text-xl text-gray-600 max-w-3xl mx-auto">
+          <p className="text-base text-gray-600 max-w-2xl mx-auto">
             Experience automated ROSCAs, build credit through community trust, and make secure payments to local merchants
           </p>
         </div>
@@ -33,13 +28,13 @@ const Features: React.FC<FeaturesProps> = ({ onPageChange }) => {
         {/* Features Grid */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 mb-20">
           {[
-            {
-              icon: Users,
-              title: 'Automated ROSCAs',
-              description: 'Join rotating savings circles with smart contract automation, transparent payouts, and community accountability',
-              gradient: 'from-emerald-500 to-green-600',
-              highlight: true
-            },
+                         {
+               icon: Users,
+               title: 'Automated ROSCAs',
+               description: 'Join rotating savings circles with smart contract automation, transparent payouts, and community accountability',
+               gradient: 'from-emerald-500 to-green-600',
+               highlight: false
+             },
             {
               icon: Store,
               title: 'Merchant Network',
@@ -90,12 +85,12 @@ const Features: React.FC<FeaturesProps> = ({ onPageChange }) => {
             }
           ].map((feature, index) => (
             <div key={index} className="group">
-              <div className={`bg-white/90 backdrop-blur-sm border ${feature.highlight ? 'border-emerald-200 ring-2 ring-emerald-100' : 'border-slate-200'} rounded-3xl p-8 hover:shadow-2xl transition-all duration-300 hover:-translate-y-2 ${feature.highlight ? 'hover:ring-4 hover:ring-emerald-200' : ''}`}>
-                <div className={`w-16 h-16 bg-gradient-to-br ${feature.gradient} rounded-2xl flex items-center justify-center mb-6 shadow-lg group-hover:scale-110 group-hover:rotate-3 transition-transform duration-300`}>
-                  <feature.icon className="w-8 h-8 text-white" />
+              <div className={`bg-white/90 backdrop-blur-sm border ${feature.highlight ? 'border-emerald-200 ring-2 ring-emerald-100' : 'border-slate-200'} rounded-3xl p-6 hover:shadow-lg transition-all duration-300 hover:-translate-y-1 ${feature.highlight ? 'hover:ring-2 hover:ring-emerald-200' : ''}`}>
+                <div className={`w-12 h-12 bg-gradient-to-br ${feature.gradient} rounded-2xl flex items-center justify-center mb-4 shadow-md group-hover:scale-105 group-hover:rotate-1 transition-transform duration-300`}>
+                  <feature.icon className="w-6 h-6 text-white" />
                 </div>
-                <h3 className="text-xl font-semibold text-gray-900 mb-3 group-hover:text-emerald-700 transition-colors duration-300">{feature.title}</h3>
-                <p className="text-gray-600 leading-relaxed">{feature.description}</p>
+                <h3 className="text-lg font-semibold text-gray-900 mb-2 group-hover:text-emerald-700 transition-colors duration-300">{feature.title}</h3>
+                <p className="text-gray-600 leading-relaxed text-sm">{feature.description}</p>
               </div>
             </div>
           ))}
@@ -141,52 +136,7 @@ const Features: React.FC<FeaturesProps> = ({ onPageChange }) => {
           </div>
         </div>
 
-        {/* CTA Section */}
-        <div className="relative overflow-hidden">
-          <div className="bg-gradient-to-r from-emerald-900 via-green-800 to-emerald-900 rounded-3xl p-12 text-center relative">
-            {/* Enhanced background pattern */}
-            <div className="absolute inset-0 bg-gradient-to-r from-emerald-500/10 via-green-500/10 to-teal-500/10 rounded-3xl"></div>
-            <div className="absolute inset-0 bg-[radial-gradient(circle_at_30%_30%,rgba(16,185,129,0.2),transparent_50%)] rounded-3xl"></div>
-            <div className="absolute inset-0 bg-[radial-gradient(circle_at_70%_70%,rgba(34,197,94,0.15),transparent_50%)] rounded-3xl"></div>
-            
-            {/* Floating elements */}
-            <div className="absolute top-8 left-8 w-4 h-4 bg-emerald-400 rounded-full animate-bounce opacity-60"></div>
-            <div className="absolute bottom-8 right-8 w-6 h-6 bg-green-400 rounded-full animate-pulse opacity-40"></div>
-            <div className="absolute top-1/2 left-12 w-2 h-2 bg-teal-400 rounded-full animate-ping opacity-50"></div>
-            
-            <div className="relative z-10">
-              <div className="inline-flex items-center gap-2 px-6 py-3 bg-white/10 backdrop-blur-sm border border-white/20 rounded-full text-sm font-medium text-white/90 mb-6">
-                <div className="w-3 h-3 bg-emerald-400 rounded-full animate-pulse"></div>
-                Join 10,000+ Community Members
-              </div>
-              <h3 className="text-4xl md:text-5xl font-bold text-white mb-4 tracking-tight">
-                Start Your Savings Journey
-                <span className="block text-3xl md:text-4xl mt-2 text-emerald-300">Build Wealth Together</span>
-              </h3>
-              <p className="text-xl text-white/80 mb-10 max-w-2xl mx-auto">
-                Join a trusted community of savers and unlock access to credit-free shopping with local merchants
-              </p>
-              <div className="flex flex-col sm:flex-row gap-4 justify-center items-center">
-                <button 
-                  onClick={handleJoinCircle}
-                  className="group bg-white text-emerald-900 px-10 py-5 rounded-xl font-semibold text-lg hover:bg-emerald-50 transition-all duration-300 hover:-translate-y-1 shadow-xl hover:shadow-2xl"
-                >
-                  <span className="flex items-center gap-3">
-                    <Users className="w-5 h-5" />
-                    Join a Savings Circle
-                    <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform duration-300" />
-                  </span>
-                </button>
-                <button className="group border-2 border-white/30 text-white px-10 py-5 rounded-xl font-semibold text-lg hover:bg-white/10 hover:border-white/50 transition-all duration-300">
-                  <span className="flex items-center gap-3">
-                    Learn More
-                    <div className="w-2 h-2 bg-emerald-400 rounded-full group-hover:scale-150 transition-transform duration-300"></div>
-                  </span>
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
+
       </div>
     </section>
   );

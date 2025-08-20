@@ -79,7 +79,7 @@ const Navbar: React.FC<NavbarProps> = ({ onPageChange }) => {
               onClick={handleStartTrading}
               className="border-2 border-emerald-500 text-gray-700 px-6 py-3 rounded-full font-semibold text-lg hover:border-emerald-600 hover:text-emerald-600 hover:bg-emerald-50 transition-all duration-200 flex items-center justify-center space-x-2"
             >
-              <span>Start trading</span>
+              <span>Start Savings</span>
             </button>
           </div>
 
@@ -110,14 +110,14 @@ const Navbar: React.FC<NavbarProps> = ({ onPageChange }) => {
               </a>
             ))}
             <div className="pt-4">
-              <button
-                onClick={handleStartTrading}
-                className="w-full relative overflow-hidden bg-gradient-to-r from-orange-500 via-orange-600 to-red-600 text-white px-6 py-3 rounded-xl font-semibold transition-all duration-300 shadow-lg hover:shadow-xl hover:shadow-orange-200 group flex items-center justify-center space-x-2"
-              >
-                <span className="relative z-10">Launch DApp</span>
-                <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform duration-300 relative z-10" />
-                <div className="absolute inset-0 bg-gradient-to-r from-orange-600 via-red-600 to-pink-600 opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
-              </button>
+                             <button
+                 onClick={handleStartTrading}
+                 className="w-full relative overflow-hidden bg-gradient-to-r from-orange-500 via-orange-600 to-red-600 text-white px-6 py-3 rounded-xl font-semibold transition-all duration-300 shadow-lg hover:shadow-xl hover:shadow-orange-200 group flex items-center justify-center space-x-2"
+               >
+                 <span className="relative z-10">Start Savings</span>
+                 <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform duration-300 relative z-10" />
+                 <div className="absolute inset-0 bg-gradient-to-r from-orange-500 via-red-600 to-pink-600 opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
+               </button>
             </div>
           </div>
         </div>

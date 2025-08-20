@@ -15,8 +15,10 @@ import OnrampOfframpInterface from '@/components/BuyandSellInterface';
 import AdminInterface from '@/components/Admin';
 import UtilityPaymentInterface from '../components/UtilityInterface';
 import MerchantInstallmentPlatform from '@/components/MerchantInstallmentInterface';
+import Marketplace from '@/components/Marketplace';
 import GaslessHome from '../components/Test';
 import LandingPage from '../components/home/index';
+
 
 // Route configuration
 const routes = {
@@ -80,6 +82,11 @@ const routes = {
     component: AdminInterface,
     requiresLayout: true,
   },
+  marketplace: {
+    component: Marketplace,
+    requiresLayout: true,
+  },
+
 } as const;
 
 type RouteKey = keyof typeof routes;

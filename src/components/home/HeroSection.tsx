@@ -112,16 +112,16 @@ const HeroSection: React.FC<HeroSectionProps> = ({ onPageChange }) => {
       <div className="max-w-8xl mx-auto px-4 sm:px-6 lg:px-8 pt-32 pb-20 relative z-10">
         <div className="text-center">
           {/* Premium Badge */}
-          <div className="inline-flex items-center px-8 py-4 bg-gradient-to-r from-emerald-500/10 via-green-500/10 to-teal-500/10 backdrop-blur-xl border border-emerald-200/30 text-emerald-700 rounded-full text-sm font-semibold mb-12 hover:scale-105 transition-all duration-300 relative overflow-hidden group">
+          <div className="inline-flex items-center px-6 py-3 bg-gradient-to-r from-emerald-500/10 via-green-500/10 to-teal-500/10 backdrop-blur-xl border border-emerald-200/30 text-emerald-700 rounded-full text-xs font-medium mb-8 hover:scale-105 transition-all duration-300 relative overflow-hidden group">
             <div className="absolute inset-0 bg-gradient-to-r from-emerald-400/20 to-green-400/20 transform -translate-x-full group-hover:translate-x-full transition-transform duration-500"></div>
-            <Star className="w-4 h-4 text-emerald-500 mr-3 animate-spin-slow relative z-10" />
+            <Star className="w-3 h-3 text-emerald-500 mr-2 animate-spin-slow relative z-10" />
             <span className="relative z-10">🌍 Empowering African Communities Through DeFi</span>
-            <Zap className="w-4 h-4 text-green-500 ml-3 animate-pulse relative z-10" />
+            <Zap className="w-3 h-3 text-green-500 ml-2 animate-pulse relative z-10" />
           </div>
 
           {/* Hero Title with 3D Effect */}
-          <div className="relative mb-12">
-            <h1 className="text-4xl md:text-7xl lg:text-8xl font-black text-gray-900 mb-8 leading-none tracking-tight">
+          <div className="relative mb-8">
+            <h1 className="text-3xl md:text-5xl lg:text-6xl font-black text-gray-900 mb-6 leading-none tracking-tight">
               <span className="block transform hover:scale-105 transition-transform duration-300">
                 Smart Community
               </span>
@@ -133,26 +133,26 @@ const HeroSection: React.FC<HeroSectionProps> = ({ onPageChange }) => {
           </div>
 
           {/* Enhanced Subheading */}
-          <p className="text-2xl md:text-3xl text-gray-600 mb-16 max-w-6xl mx-auto leading-relaxed font-light">
+          <p className="text-lg md:text-xl text-gray-600 mb-12 max-w-4xl mx-auto leading-relaxed font-light">
             Join automated rotating savings groups (ROSCAs), build credit through community trust, and use your
             <span className="text-emerald-600 font-semibold"> on-chain payouts </span>
             for secure installment payments at local merchants.
           </p>
 
           {/* CTA Buttons */}
-          <div className="flex flex-col sm:flex-row items-center justify-center gap-6 mb-16">
+          <div className="flex flex-col sm:flex-row items-center justify-center gap-4 mb-12">
             <button 
               onClick={handleStartSaving}  
-              className="bg-gradient-to-r from-emerald-500 to-green-600 text-white px-10 py-5 rounded-full font-semibold text-lg hover:from-emerald-600 hover:to-green-700 transition-all duration-300 flex items-center space-x-3 shadow-lg hover:shadow-xl hover:shadow-emerald-200/50 hover:scale-105"
+              className="bg-gradient-to-r from-emerald-500 to-green-600 text-white px-8 py-4 rounded-full font-semibold text-base hover:from-emerald-600 hover:to-green-700 transition-all duration-300 flex items-center space-x-3 shadow-lg hover:shadow-xl hover:shadow-emerald-200/50 hover:scale-105"
             >
-              <Users className="w-6 h-6" />
+              <Users className="w-5 h-5" />
               <span>Join a Savings Circle</span>
-              <ArrowRight className="w-5 h-5" />
+              <ArrowRight className="w-4 h-4" />
             </button>
             
             <a
               href="#"
-              className="inline-block border-2 border-gray-300 text-gray-700 px-10 py-5 rounded-full font-semibold text-lg hover:border-emerald-400 hover:text-emerald-600 hover:bg-emerald-50 transition-all duration-300 hover:scale-105"
+              className="inline-block border-2 border-gray-300 text-gray-700 px-8 py-4 rounded-full font-semibold text-base hover:border-emerald-400 hover:text-emerald-600 hover:bg-emerald-50 transition-all duration-300 hover:scale-105"
             >
               Learn How It Works
             </a>
@@ -165,8 +165,8 @@ const HeroSection: React.FC<HeroSectionProps> = ({ onPageChange }) => {
                 <div className="w-16 h-16 bg-gradient-to-br from-emerald-100 to-emerald-200 border border-emerald-200 rounded-2xl flex items-center justify-center mx-auto mb-4 group-hover:scale-125 group-hover:rotate-6 transition-transform duration-300">
                   <Users className="w-8 h-8 text-emerald-600" />
                 </div>
-                <div className="text-3xl font-bold text-gray-900 mb-2 group-hover:text-emerald-600 transition-colors duration-300">150+</div>
-                <div className="text-gray-600 text-base font-medium">Active Circles</div>
+                <div className="text-2xl font-bold text-gray-900 mb-2 group-hover:text-emerald-600 transition-colors duration-300">150+</div>
+                <div className="text-gray-600 text-sm font-medium">Active Circles</div>
               </div>
             </div>
             
@@ -175,8 +175,8 @@ const HeroSection: React.FC<HeroSectionProps> = ({ onPageChange }) => {
                 <div className="w-16 h-16 bg-gradient-to-br from-blue-100 to-blue-200 border border-blue-200 rounded-2xl flex items-center justify-center mx-auto mb-4 group-hover:scale-125 group-hover:rotate-6 transition-transform duration-300">
                   <Store className="w-8 h-8 text-blue-600" />
                 </div>
-                <div className="text-3xl font-bold text-gray-900 mb-2 group-hover:text-blue-600 transition-colors duration-300">500+</div>
-                <div className="text-gray-600 text-base font-medium">Partner Merchants</div>
+                <div className="text-2xl font-bold text-gray-900 mb-2 group-hover:text-blue-600 transition-colors duration-300">500+</div>
+                <div className="text-gray-600 text-sm font-medium">Partner Merchants</div>
               </div>
             </div>
             

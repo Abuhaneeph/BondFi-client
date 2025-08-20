@@ -2,7 +2,6 @@ import React from 'react';
 import Navbar from './Navbar';
 import HeroSection from './HeroSection';
 import Features from './Features';
-import TrustedPartners from './Partner';
 // import Stats from './Stats';
 // import Testimonials from './Testimonials';
 // import Contact from './Contact';
@@ -17,9 +16,8 @@ const LandingPage: React.FC<LandingPageProps> = ({ onPageChange }) => {
     <div className="min-h-screen bg-white">
       <Navbar onPageChange={onPageChange} />
       <HeroSection onPageChange={onPageChange} />
-      {/* <Stats /> */}
       <Features onPageChange={onPageChange} />
-
+      <Footer onPageChange={onPageChange} />
     </div>
   );
 };

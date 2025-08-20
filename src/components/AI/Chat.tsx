@@ -99,13 +99,9 @@ const AIChatModal = ({ isOpen, onClose, context = 'general' }) => {
         content: userMessage
       });
 
-      // Use contextual help if context is provided and it's a simple query
-      if (context !== 'general' && conversationMessages.length <= 2) {
-        return await getContextualHelp(context, userMessage);
-      }
-
-      // Otherwise use full conversation context
-      return await getAIResponse(conversationMessages);
+      // Get AI response
+      const response = await getAIResponse(conversationMessages);
+      return response;
     } catch (error) {
       console.error('AI Response Error:', error);
       throw error;
@@ -115,58 +111,37 @@ const AIChatModal = ({ isOpen, onClose, context = 'general' }) => {
   const handleSendMessage = async () => {
     if (!inputValue.trim() || isLoading) return;
 
-    // Check configuration first
-    if (!isConfigured()) {
-      setError('Please configure your OpenRouter API key to use the AI assistant.');
-      return;
-    }
-
-    const userMessage = {
+    const userMessage = inputValue.trim();
+    setInputValue('');
+    
+    // Add user message
+    const userMsg = {
       id: Date.now().toString(),
-      text: inputValue,
+      text: userMessage,
       isUser: true,
       timestamp: new Date()
     };
-
-    setMessages(prev => [...prev, userMessage]);
-    setInputValue('');
+    
+    setMessages(prev => [...prev, userMsg]);
     setIsLoading(true);
     setError(null);
 
     try {
-      const aiResponse = await getSmartAIResponse(inputValue, messages);
+      // Get AI response
+      const aiResponse = await getSmartAIResponse(userMessage, [...messages, userMsg]);
       
-      const aiMessage = {
+      // Add AI response
+      const aiMsg = {
         id: (Date.now() + 1).toString(),
         text: aiResponse,
         isUser: false,
         timestamp: new Date()
       };
-
-      setMessages(prev => [...prev, aiMessage]);
+      
+      setMessages(prev => [...prev, aiMsg]);
     } catch (error) {
-      console.error('Chat Error:', error);
-      
-      let errorMessage = "I apologize, but I'm having trouble responding right now. ";
-      
-      if (error.message.includes('API key')) {
-        errorMessage += "Please check your Internet configuration.";
-      } else if (error.message.includes('Rate limit')) {
-        errorMessage += "I'm receiving too many requests. Please try again in a moment.";
-      } else if (error.message.includes('service')) {
-        errorMessage += "The AI service is temporarily unavailable. Please try again later.";
-      } else {
-        errorMessage += "Please try again in a moment.";
-      }
-      
-      const errorMsg = {
-        id: (Date.now() + 1).toString(),
-        text: errorMessage,
-        isUser: false,
-        timestamp: new Date()
-      };
-      setMessages(prev => [...prev, errorMsg]);
-      setError(error.message);
+      console.error('Failed to get AI response:', error);
+      setError(error.message || 'Failed to get AI response. Please try again.');
     } finally {
       setIsLoading(false);
     }
@@ -179,11 +154,21 @@ const AIChatModal = ({ isOpen, onClose, context = 'general' }) => {
     }
   };
 
-  const clearChat = () => {
+  const copyToClipboard = async (text, messageId) => {
+    try {
+      await navigator.clipboard.writeText(text);
+      setCopiedId(messageId);
+      setTimeout(() => setCopiedId(null), 2000);
+    } catch (err) {
+      console.error('Failed to copy text: ', err);
+    }
+  };
+
+  const resetConversation = () => {
     setMessages([
       {
         id: '1',
-        text: "Chat cleared! I'm still here to help with FlowPay, blockchain, and DeFi questions. What would you like to know?",
+        text: getContextualHelp(context),
         isUser: false,
         timestamp: new Date()
       }
@@ -191,304 +176,307 @@ const AIChatModal = ({ isOpen, onClose, context = 'general' }) => {
     setError(null);
   };
 
-  const copyMessage = (text, messageId) => {
-    navigator.clipboard.writeText(text);
-    setCopiedId(messageId);
-    setTimeout(() => setCopiedId(null), 2000);
+  const toggleMinimize = () => {
+    setIsMinimized(!isMinimized);
   };
-
-  const formatTime = (date) => {
-    return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-  };
-
-  // Quick action prompts specific to FlowPay
-  const quickActions = [
-    "How do I swap tokens?",
-    "Explain Ajo savings",
-    "Check transaction fees"
-  ];
 
   if (!isOpen) return null;
 
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6 pointer-events-none">
-      {/* Background overlay */}
-      <div 
-        className="absolute inset-0 bg-black/20 backdrop-blur-sm pointer-events-auto"
-        onClick={onClose}
-      />
-      
-      {/* Chat Modal */}
-      <Draggable
-        nodeRef={nodeRef}
-        handle=".drag-handle"
-        bounds="parent"
-        position={isMobile ? undefined : position}
-        onStop={(e, data) => setPosition({ x: data.x, y: data.y })}
-        disabled={isMobile}
-      >
-        <div 
-          ref={nodeRef}
-          className={cn(
-            "relative bg-white rounded-2xl rounded-b-2xl shadow-2xl border border-stone-200 transition-all duration-300 ease-out flex flex-col pointer-events-auto",
-            isMinimized 
-              ? "w-64 h-14" 
-              : "w-[90vw] max-w-4xl h-[350px] sm:h-[400px]"
-          )}
-          onClick={(e) => e.stopPropagation()}
-        >
-          {/* Header */}
-          <div className="drag-handle flex-shrink-0 flex items-center justify-between p-4 border-b border-stone-200 bg-white rounded-t-2xl cursor-move">
-            <div className="flex items-center space-x-3">
-              <div className="relative">
-                <div className="w-8 h-8 bg-white rounded-full flex items-center justify-center shadow-sm">
-                  <Bot className="w-5 h-5 text-orange-500" />
-                </div>
-                <div className={cn(
-                  "absolute -bottom-1 -right-1 w-3 h-3 rounded-full border-2 border-white",
-                  isConfigured() ? "bg-green-500" : "bg-red-500"
-                )}></div>
-              </div>
-              <div>
-                <h3 className="font-semibold text-stone-900">FlowPay AI</h3>
-                <p className="text-xs text-stone-500">
-                  {isConfigured() ? "Blockchain & DeFi Expert" : "Configuration needed"}
-                </p>
-              </div>
-            </div>
-            <div className="flex items-center space-x-2">
-              <button
-                onClick={() => setIsMinimized(!isMinimized)}
-                className="p-1.5 rounded-lg hover:bg-stone-100 transition-colors"
-                title={isMinimized ? "Maximize" : "Minimize"}
-              >
-                {isMinimized ? (
-                  <Maximize2 className="w-4 h-4 text-stone-500" />
-                ) : (
-                  <Minimize2 className="w-4 h-4 text-stone-500" />
-                )}
-              </button>
-              <button
-                onClick={onClose}
-                className="p-1.5 rounded-lg hover:bg-stone-100 transition-colors"
-                title="Close"
-              >
-                <X className="w-4 h-4 text-stone-500" />
-              </button>
-            </div>
+  // Mobile view - full screen modal
+  if (isMobile) {
+    return (
+      <div className="fixed inset-0 z-50 bg-white">
+        {/* Mobile Header */}
+        <div className="flex items-center justify-between p-4 border-b border-stone-200 bg-gradient-to-r from-terracotta to-sage">
+          <div className="flex items-center space-x-2">
+            <Bot className="w-6 h-6 text-white" />
+            <span className="text-white font-semibold">BondFi AI Assistant</span>
           </div>
+          <button
+            onClick={onClose}
+            className="p-2 rounded-lg hover:bg-white/20 transition-colors"
+          >
+            <X className="w-6 h-6 text-white" />
+          </button>
+        </div>
 
-          {!isMinimized && (
-            <div className="flex flex-col h-full">
-              {/* Quick Actions */}
-              {messages.length <= 1 && (
-                <div className="flex-shrink-0 p-3 border-b border-stone-100 bg-stone-50">
-                  <div className="flex items-center justify-between mb-2">
-                    <span className="text-xs font-medium text-stone-600">Quick Help</span>
+        {/* Mobile Messages */}
+        <div className="flex-1 overflow-y-auto p-4 space-y-4">
+          {messages.map((message) => (
+            <div
+              key={message.id}
+              className={cn(
+                'flex space-x-3',
+                message.isUser ? 'justify-end' : 'justify-start'
+              )}
+            >
+              {!message.isUser && (
+                <div className="w-8 h-8 bg-gradient-to-br from-terracotta to-sage rounded-full flex items-center justify-center flex-shrink-0">
+                  <Bot className="w-4 h-4 text-white" />
+                </div>
+              )}
+              <div
+                className={cn(
+                  'max-w-[80%] rounded-2xl px-4 py-3',
+                  message.isUser
+                    ? 'bg-gradient-to-r from-terracotta to-sage text-white'
+                    : 'bg-stone-100 text-stone-800'
+                )}
+              >
+                <ReactMarkdown className="prose prose-sm max-w-none">
+                  {message.text}
+                </ReactMarkdown>
+                <div className="flex items-center justify-between mt-2">
+                  <span className="text-xs opacity-70">
+                    {message.timestamp.toLocaleTimeString()}
+                  </span>
+                  {!message.isUser && (
                     <button
-                      onClick={clearChat}
-                      className="p-1 rounded-md hover:bg-stone-200 transition-colors"
-                      title="Clear chat"
+                      onClick={() => copyToClipboard(message.text, message.id)}
+                      className="p-1 hover:bg-white/20 rounded transition-colors"
                     >
-                      <RotateCcw className="w-3 h-3 text-stone-500" />
-                    </button>
-                  </div>
-                  <div className="flex justify-between gap-2">
-                    {quickActions.map((action) => (
-                      <button
-                        key={action}
-                        onClick={() => {
-                          setInputValue(action);
-                          setTimeout(handleSendMessage, 100);
-                        }}
-                        className="px-2 py-1 text-xs bg-white border border-stone-200 rounded-full hover:bg-stone-50 hover:border-orange-500 transition-colors flex-1 text-center truncate"
-                        disabled={!isConfigured()}
-                      >
-                        {action}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-              )}
-
-              {/* Error Banner */}
-              {error && (
-                <div className="flex-shrink-0 p-2 bg-red-50 border-b border-red-200">
-                  <div className="flex items-center space-x-2">
-                    <AlertTriangle className="w-4 h-4 text-red-500" />
-                    <span className="text-xs text-red-700">{error}</span>
-                  </div>
-                </div>
-              )}
-
-              {/* Messages Container */}
-              <div className="flex-1 min-h-0 overflow-y-auto p-4 space-y-4">
-                <div className="flex flex-col-reverse">
-                  <div ref={messagesEndRef} />
-                  
-                  {/* Loading indicator */}
-                  {isLoading && (
-                    <div className="flex items-start space-x-3 mb-4">
-                      <div className="w-8 h-8 bg-gradient-to-br from-green-500 to-green-600 rounded-full flex items-center justify-center shadow-sm">
-                        <Bot className="w-4 h-4 text-white" />
-                      </div>
-                      <div className="bg-white border border-stone-200 rounded-2xl rounded-bl-md px-4 py-3 shadow-sm">
-                        <div className="flex items-center space-x-2">
-                          <Loader2 className="w-4 h-4 text-stone-500 animate-spin" />
-                          <span className="text-sm text-stone-600">Analyzing your question...</span>
-                        </div>
-                      </div>
-                    </div>
-                  )}
-
-                  {messages.slice().reverse().map((message) => (
-                    <div
-                      key={message.id}
-                      className={cn(
-                        "flex items-start space-x-3 group mb-4",
-                        message.isUser ? "flex-row-reverse space-x-reverse" : ""
+                      {copiedId === message.id ? (
+                        <CheckCircle className="w-3 h-3" />
+                      ) : (
+                        <Copy className="w-3 h-3" />
                       )}
-                    >
-                      {/* Avatar */}
-                      <div className="flex-shrink-0">
-                        <div className={cn(
-                          "w-8 h-8 rounded-full flex items-center justify-center shadow-sm",
-                          message.isUser 
-                            ? "bg-gradient-to-br from-orange-500 to-orange-600" 
-                            : "bg-gradient-to-br from-green-500 to-green-600"
-                        )}>
-                          {message.isUser ? (
-                            <User className="w-4 h-4 text-white" />
-                          ) : (
-                            <Bot className="w-4 h-4 text-white" />
-                          )}
-                        </div>
-                      </div>
-
-                      {/* Message Content */}
-                      <div className={cn(
-                        "relative px-4 py-3 rounded-2xl" +
-                        (message.isUser
-                          ? " bg-gradient-to-br from-orange-500 to-orange-600 text-white rounded-br-md shadow-sm"
-                          : " text-stone-900 w-full")
-                      )}>
-                        <p className="text-sm leading-relaxed whitespace-pre-wrap">
-                          <ReactMarkdown
-                            components={{
-                              h1: (props) => <h1 className="text-lg font-bold mb-1" {...props} />,
-                              h2: (props) => <h2 className="text-base font-bold mb-1" {...props} />,
-                              h3: (props) => <h3 className="text-sm font-bold mb-0.5" {...props} />,
-                              p: (props) => <p className="mb-1 last:mb-0" style={{marginBottom: 0}} {...props} />,
-                              ul: (props) => <ul className="list-disc pl-4 mb-1 last:mb-0" {...props} />,
-                              ol: (props) => <ol className="list-decimal pl-4 mb-1 last:mb-0" style={{paddingLeft: '1.25rem'}} {...props} />,
-                              li: (props) => <li className="mb-0.5 last:mb-0 flex items-center" style={{marginBottom: 0}} {...props} />,
-                              code: ({inline, ...props}: {inline?: boolean; [key: string]: any}) => 
-                                inline ? 
-                                  <code className="bg-stone-100 px-1 py-0.5 rounded text-sm" {...props} /> :
-                                  <code className="block bg-stone-100 p-2 rounded text-sm mb-1 overflow-x-auto" {...props} />,
-                              pre: (props) => <pre className="bg-stone-100 p-2 rounded text-sm mb-1 overflow-x-auto" {...props} />,
-                              blockquote: (props) => <blockquote className="border-l-4 border-stone-300 pl-4 italic mb-1 last:mb-0" {...props} />,
-                              a: (props) => <a className="text-blue-600 hover:underline" {...props} />,
-                            }}
-                          >
-                            {message.text}
-                          </ReactMarkdown>
-                        </p>
-                        
-                        {/* Copy button */}
-                        <button
-                          onClick={() => copyMessage(message.text, message.id)}
-                          className={cn(
-                            "absolute top-2 right-2 p-1 rounded-md opacity-0 group-hover:opacity-100 transition-opacity",
-                            message.isUser
-                              ? "hover:bg-white/20"
-                              : "hover:bg-stone-100"
-                          )}
-                          title="Copy message"
-                        >
-                          {copiedId === message.id ? (
-                            <CheckCircle className={cn(
-                              "w-3 h-3",
-                              message.isUser ? "text-white" : "text-green-600"
-                            )} />
-                          ) : (
-                            <Copy className={cn(
-                              "w-3 h-3",
-                              message.isUser ? "text-white/80" : "text-stone-500"
-                            )} />
-                          )}
-                        </button>
-                      </div>
-                      
-                      {/* Timestamp */}
-                      <span className={cn(
-                        "text-xs text-stone-500 mt-1",
-                        message.isUser ? "self-end" : "self-start"
-                      )}>
-                        {formatTime(message.timestamp)}
-                      </span>
-                    </div>
-                  ))}
+                    </button>
+                  )}
                 </div>
               </div>
-
-              {/* Input Area */}
-              <div className="flex-shrink-0 p-3 border-t border-stone-200 bg-white">
-                <div className="flex justify-center">
-                  <div className="flex w-full max-w-md items-end space-x-2">
-                    <div className="relative flex-1 flex items-center">
-                      <textarea
-                        ref={inputRef}
-                        value={inputValue}
-                        onChange={(e) => setInputValue(e.target.value)}
-                        onKeyDown={handleKeyPress}
-                        placeholder={isConfigured() ? "Talk blockchain..." : "Configure API key to use AI assistant"}
-                        className="w-full resize-none rounded-xl bg-transparent border border-stone-300 px-6 py-4 pr-10 text-sm placeholder-stone-500 focus:outline-none focus:ring-0 disabled:bg-transparent disabled:cursor-not-allowed overflow-x-hidden"
-                        rows={1}
-                        style={{
-                          minHeight: '32px',
-                          maxHeight: '80px'
-                        }}
-                        disabled={!isConfigured()}
-                      />
-                      {/* AI Sparkle Icon */}
-                      <div className="absolute right-2 top-1/2 -translate-y-1/2">
-                        <Sparkles className={cn(
-                          "w-4 h-4",
-                          isConfigured() ? "text-stone-400" : "text-stone-300"
-                        )} />
-                      </div>
-                    </div>
-                    <button
-                      onClick={handleSendMessage}
-                      disabled={!inputValue.trim() || isLoading || !isConfigured()}
-                      className={cn(
-                        "p-3 rounded-xl transition-all duration-200",
-                        inputValue.trim() && !isLoading && isConfigured()
-                          ? "bg-gradient-to-r from-orange-500 to-orange-600 text-white shadow-lg hover:shadow-xl hover:scale-105"
-                          : "bg-stone-200 text-stone-400 cursor-not-allowed"
-                      )}
-                      title="Send message"
-                    >
-                      {isLoading ? (
-                        <Loader2 className="w-5 h-5 animate-spin" />
-                      ) : (
-                        <Send className="w-5 h-5" />
-                      )}
-                    </button>
-                  </div>
+              {message.isUser && (
+                <div className="w-8 h-8 bg-stone-200 rounded-full flex items-center justify-center flex-shrink-0">
+                  <User className="w-4 h-4 text-stone-600" />
                 </div>
-                
-                {/* Disclaimer */}
-                <p className="text-xs text-stone-500 mt-2 text-center">
-                  AI responses are generated and may not always be accurate. Please verify important information.
-                </p>
+              )}
+            </div>
+          ))}
+          
+          {isLoading && (
+            <div className="flex space-x-3">
+              <div className="w-8 h-8 bg-gradient-to-br from-terracotta to-sage rounded-full flex items-center justify-center">
+                <Bot className="w-4 h-4 text-white" />
+              </div>
+              <div className="bg-stone-100 rounded-2xl px-4 py-3">
+                <div className="flex items-center space-x-2">
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                  <span className="text-stone-600">AI is thinking...</span>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {error && (
+            <div className="flex space-x-3">
+              <div className="w-8 h-8 bg-red-500 rounded-full flex items-center justify-center">
+                <AlertTriangle className="w-4 h-4 text-white" />
+              </div>
+              <div className="bg-red-50 border border-red-200 rounded-2xl px-4 py-3">
+                <span className="text-red-800 text-sm">{error}</span>
               </div>
             </div>
           )}
         </div>
-      </Draggable>
-    </div>
+
+        {/* Mobile Input */}
+        <div className="p-4 border-t border-stone-200">
+          <div className="flex space-x-2">
+            <input
+              ref={inputRef}
+              type="text"
+              value={inputValue}
+              onChange={(e) => setInputValue(e.target.value)}
+              onKeyPress={handleKeyPress}
+              placeholder="Ask me anything about BondFi..."
+              className="flex-1 px-4 py-3 border border-stone-300 rounded-2xl focus:outline-none focus:ring-2 focus:ring-terracotta focus:border-transparent"
+              disabled={isLoading}
+            />
+            <button
+              onClick={handleSendMessage}
+              disabled={!inputValue.trim() || isLoading}
+              className="px-6 py-3 bg-gradient-to-r from-terracotta to-sage text-white rounded-2xl font-medium disabled:opacity-50 disabled:cursor-not-allowed hover:shadow-lg transition-all"
+            >
+              <Send className="w-5 h-5" />
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // Desktop view - draggable modal
+  return (
+    <Draggable
+      nodeRef={nodeRef}
+      position={position}
+      onStop={(e, data) => setPosition({ x: data.x, y: data.y })}
+      bounds="body"
+    >
+      <div
+        ref={nodeRef}
+        className={cn(
+          'fixed z-50 bg-white rounded-2xl shadow-2xl border border-stone-200 transition-all duration-300',
+          isMinimized ? 'w-80 h-16' : 'w-96 h-[600px]'
+        )}
+        style={{
+          top: Math.max(20, position.y),
+          left: Math.max(20, position.x),
+          right: Math.max(20, window.innerWidth - position.x - 384)
+        }}
+      >
+        {/* Header */}
+        <div className="flex items-center justify-between p-4 border-b border-stone-200 bg-gradient-to-r from-terracotta to-sage rounded-t-2xl">
+          <div className="flex items-center space-x-2">
+            <Bot className="w-5 h-5 text-white" />
+            <span className="text-white font-semibold text-sm">
+              {isMinimized ? 'BondFi AI' : 'BondFi AI Assistant'}
+            </span>
+          </div>
+          <div className="flex items-center space-x-1">
+            <button
+              onClick={toggleMinimize}
+              className="p-1.5 rounded-lg hover:bg-white/20 transition-colors"
+              title={isMinimized ? 'Maximize' : 'Minimize'}
+            >
+              {isMinimized ? (
+                <Maximize2 className="w-4 h-4 text-white" />
+              ) : (
+                <Minimize2 className="w-4 h-4 text-white" />
+              )}
+            </button>
+            <button
+              onClick={onClose}
+              className="p-1.5 rounded-lg hover:bg-white/20 transition-colors"
+            >
+              <X className="w-4 h-4 text-white" />
+            </button>
+          </div>
+        </div>
+
+        {!isMinimized && (
+          <>
+            {/* Messages */}
+            <div className="flex-1 overflow-y-auto p-4 space-y-4 h-[480px]">
+              {messages.map((message) => (
+                <div
+                  key={message.id}
+                  className={cn(
+                    'flex space-x-3',
+                    message.isUser ? 'justify-end' : 'justify-start'
+                  )}
+                >
+                  {!message.isUser && (
+                    <div className="w-6 h-6 bg-gradient-to-br from-terracotta to-sage rounded-full flex items-center justify-center flex-shrink-0">
+                      <Bot className="w-3 h-3 text-white" />
+                    </div>
+                  )}
+                  <div
+                    className={cn(
+                      'max-w-[80%] rounded-2xl px-3 py-2 text-sm',
+                      message.isUser
+                        ? 'bg-gradient-to-r from-terracotta to-sage text-white'
+                        : 'bg-stone-100 text-stone-800'
+                    )}
+                  >
+                    <ReactMarkdown className="prose prose-sm max-w-none">
+                      {message.text}
+                    </ReactMarkdown>
+                    <div className="flex items-center justify-between mt-2">
+                      <span className="text-xs opacity-70">
+                        {message.timestamp.toLocaleTimeString()}
+                      </span>
+                      {!message.isUser && (
+                        <button
+                          onClick={() => copyToClipboard(message.text, message.id)}
+                          className="p-1 hover:bg-white/20 rounded transition-colors"
+                        >
+                          {copiedId === message.id ? (
+                            <CheckCircle className="w-3 h-3" />
+                          ) : (
+                            <Copy className="w-3 h-3" />
+                          )}
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                  {message.isUser && (
+                    <div className="w-6 h-6 bg-stone-200 rounded-full flex items-center justify-center flex-shrink-0">
+                      <User className="w-3 h-3 text-stone-600" />
+                    </div>
+                  )}
+                </div>
+              ))}
+              
+              {isLoading && (
+                <div className="flex space-x-3">
+                  <div className="w-6 h-6 bg-gradient-to-br from-terracotta to-sage rounded-full flex items-center justify-center">
+                    <Bot className="w-3 h-3 text-white" />
+                  </div>
+                  <div className="bg-stone-100 rounded-2xl px-3 py-2">
+                    <div className="flex items-center space-x-2">
+                      <Loader2 className="w-3 h-3 animate-spin" />
+                      <span className="text-stone-600 text-sm">AI is thinking...</span>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {error && (
+                <div className="flex space-x-3">
+                  <div className="w-6 h-6 bg-red-500 rounded-full flex items-center justify-center">
+                    <AlertTriangle className="w-3 h-3 text-white" />
+                  </div>
+                  <div className="bg-red-50 border border-red-200 rounded-2xl px-3 py-2">
+                    <span className="text-red-800 text-sm">{error}</span>
+                  </div>
+                </div>
+              )}
+              
+              <div ref={messagesEndRef} />
+            </div>
+
+            {/* Input */}
+            <div className="p-4 border-t border-stone-200">
+              <div className="flex space-x-2">
+                <input
+                  ref={inputRef}
+                  type="text"
+                  value={inputValue}
+                  onChange={(e) => setInputValue(e.target.value)}
+                  onKeyPress={handleKeyPress}
+                  placeholder="Ask me anything about BondFi..."
+                  className="flex-1 px-3 py-2 border border-stone-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-terracotta focus:border-transparent text-sm"
+                  disabled={isLoading}
+                />
+                <button
+                  onClick={handleSendMessage}
+                  disabled={!inputValue.trim() || isLoading}
+                  className="px-4 py-2 bg-gradient-to-r from-terracotta to-sage text-white rounded-xl font-medium disabled:opacity-50 disabled:cursor-not-allowed hover:shadow-lg transition-all text-sm"
+                >
+                  <Send className="w-4 h-4" />
+                </button>
+              </div>
+              
+              {/* Reset Button */}
+              <div className="flex justify-center mt-3">
+                <button
+                  onClick={resetConversation}
+                  className="flex items-center space-x-2 px-3 py-1.5 text-xs text-stone-500 hover:text-stone-700 hover:bg-stone-100 rounded-lg transition-colors"
+                >
+                  <RotateCcw className="w-3 h-3" />
+                  <span>Reset Chat</span>
+                </button>
+              </div>
+            </div>
+          </>
+        )}
+
+        {/* Drag Handle */}
+        <div className="absolute top-2 left-1/2 transform -translate-x-1/2 cursor-grab active:cursor-grabbing">
+          <GripVertical className="w-4 h-4 text-white/60" />
+        </div>
+      </div>
+    </Draggable>
   );
 };
 
