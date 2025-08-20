@@ -6,7 +6,9 @@ import {
   MessageCircle, 
   Mail, 
   ArrowUp,
-  ExternalLink
+  ExternalLink,
+  Shield,
+  BookOpen
 } from 'lucide-react';
 
 interface FooterProps {
@@ -21,39 +23,39 @@ const Footer: React.FC<FooterProps> = ({ onPageChange }) => {
   const footerLinks = {
     platform: [
       { name: 'Dashboard', page: 'dashboard' },
-      { name: 'Swap Tokens', page: 'swap' },
       { name: 'Savings Groups', page: 'savings' },
+      { name: 'Merchant Network', page: 'merchant' },
       { name: 'Send Money', page: 'send' },
-      { name: 'Buy/Sell', page: 'Buy/Sell' }
+      { name: 'Buy/Sell', page: 'buy-sell' }
     ],
     resources: [
-      { name: 'Documentation', href: 'https://docs.FlowPay.com', external: true },
-      { name: 'API Reference', href: 'https://api.FlowPay.com', external: true },
-      { name: 'Help Center', href: 'https://help.FlowPay.com', external: true },
-      { name: 'Blog', href: 'https://blog.FlowPay.com', external: true },
-      { name: 'Tutorials', href: 'https://tutorials.FlowPay.com', external: true }
+      { name: 'How it Works', href: '#', external: false },
+      { name: 'Smart Contracts', href: '#', external: false },
+      { name: 'Security', href: '#', external: false },
+      { name: 'Fees & Pricing', href: '#', external: false },
+      { name: 'Documentation', href: '#', external: false }
     ],
     company: [
-      { name: 'About Us', href: 'https://FlowPay.com/about', external: true },
-      { name: 'Careers', href: 'https://FlowPay.com/careers', external: true },
-      { name: 'Press Kit', href: 'https://FlowPay.com/press', external: true },
-      { name: 'Partners', href: 'https://FlowPay.com/partners', external: true },
-      { name: 'Contact', href: 'mailto:contact@FlowPay.com', external: true }
+      { name: 'About Us', href: '#', external: false },
+      { name: 'Success Stories', href: '#', external: false },
+      { name: 'Cultural Impact', href: '#', external: false },
+      { name: 'Partners', href: '#', external: false },
+      { name: 'Contact', href: 'mailto:hello@bondfi.com', external: true }
     ],
     legal: [
-      { name: 'Terms of Service', href: 'https://FlowPay.com/terms', external: true },
-      { name: 'Privacy Policy', href: 'https://FlowPay.com/privacy', external: true },
-      { name: 'Cookie Policy', href: 'https://FlowPay.com/cookies', external: true },
-      { name: 'Security', href: 'https://FlowPay.com/security', external: true },
-      { name: 'Compliance', href: 'https://FlowPay.com/compliance', external: true }
+      { name: 'Terms of Service', href: '#', external: false },
+      { name: 'Privacy Policy', href: '#', external: false },
+      { name: 'Help Center', href: '#', external: false },
+      { name: 'Bug Reports', href: '#', external: false },
+      { name: 'Community Forum', href: '#', external: false }
     ]
   };
 
   const socialLinks = [
-    { icon: Twitter, href: 'https://twitter.com/FlowPay', label: 'Twitter', external: true },
-    { icon: Github, href: 'https://github.com/FlowPay', label: 'GitHub', external: true },
-    { icon: MessageCircle, href: 'https://discord.gg/FlowPay', label: 'Discord', external: true },
-    { icon: Mail, href: 'mailto:hello@FlowPay.com', label: 'Email', external: true }
+    { icon: Twitter, href: 'https://twitter.com/BondFi', label: 'Twitter', external: true },
+    { icon: Github, href: 'https://github.com/BondFi', label: 'GitHub', external: true },
+    { icon: Globe, href: 'https://bondfi.com', label: 'Website', external: true },
+    { icon: Mail, href: 'mailto:hello@bondfi.com', label: 'Email', external: true }
   ];
 
   const supportedTokens = [
@@ -83,9 +85,9 @@ const Footer: React.FC<FooterProps> = ({ onPageChange }) => {
             <div className="lg:col-span-2">
               <div className="flex items-center space-x-3 mb-6">
               <div className="relative">
-              <img 
+                              <img 
                 src="https://res.cloudinary.com/ecosheane/image/upload/v1749952368/logo_virjcs.jpg"
-                alt="FlowPay Logo"
+                alt="BondFi Logo"
                 className="w-12 h-12 rounded-xl object-cover transition-all duration-300 group-hover:scale-105"
               />
             </div>
@@ -93,7 +95,7 @@ const Footer: React.FC<FooterProps> = ({ onPageChange }) => {
               </div>
               <p className="text-gray-400 mb-6 leading-relaxed">
                Africa’s Stablecoin Gateway to the World, built on Morph blockchain. 
-               Powering African Finance through De-Fi.
+               Building trust, preserving culture, creating opportunities.
               </p>
               
               {/* Supported Tokens */}
@@ -214,14 +216,25 @@ const Footer: React.FC<FooterProps> = ({ onPageChange }) => {
             <div className="flex flex-col md:flex-row items-center justify-between">
               <div className="flex items-center space-x-6 mb-4 md:mb-0">
                 <p className="text-gray-400 text-sm">
-                  © 2025 FlowPay. All rights reserved.
+                  © 2024 BondFi. All rights reserved.
                 </p>
                 <div className="flex items-center space-x-2 text-xs text-gray-500">
                   <span>Built on</span>
-                  <span className="text-blue-400 font-medium">Morph</span>
+                  <span className="text-blue-400 font-medium">Blockchain</span>
                   <span>•</span>
                   <span>Secured by</span>
                   <span className="text-green-400 font-medium">Smart Contracts</span>
+                </div>
+              </div>
+              
+              <div className="flex items-center space-x-4">
+                <div className="flex items-center space-x-2 text-sm text-gray-400">
+                  <Shield className="h-4 w-4 text-green-400" />
+                  <span>Blockchain Secured</span>
+                </div>
+                <div className="flex items-center space-x-2 text-sm text-gray-400">
+                  <BookOpen className="h-4 w-4 text-blue-400" />
+                  <span>Open Source</span>
                 </div>
               </div>
               

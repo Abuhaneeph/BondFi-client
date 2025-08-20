@@ -1,10 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import { formatEther, JsonRpcProvider } from 'ethers';
 import { useContractInstances } from '@/provider/ContractInstanceProvider';
-import AIChatModal from '../AI/Chat';
+
 import tokens from '@/lib/Tokens/tokens';
 import TopNavbar from './Navbar';
 import MobileSidebar from './Mobile';
+import AIChatModal from '@/components/AI/Chat';
 
 interface LayoutProps {
   children: React.ReactNode;
@@ -17,6 +18,7 @@ const Layout = ({ children, currentPage, onPageChange }: LayoutProps) => {
   const [showNotifications, setShowNotifications] = useState(false);
   const [showMoreMenu, setShowMoreMenu] = useState(false);
   const [showAIChat, setShowAIChat] = useState(false);
+
   
   const { 
     isConnected, 
@@ -137,9 +139,9 @@ const Layout = ({ children, currentPage, onPageChange }: LayoutProps) => {
         setSidebarOpen={setSidebarOpen}
         currentPage={currentPage}
         onPageChange={onPageChange}
-        setShowAIChat={setShowAIChat}
         showNotifications={showNotifications}
         setShowNotifications={setShowNotifications}
+        setShowAIChat={setShowAIChat}
         isConnected={isConnected}
         address={address}
         isCorrectNetwork={isCorrectNetwork}
@@ -153,13 +155,7 @@ const Layout = ({ children, currentPage, onPageChange }: LayoutProps) => {
         />
       )}
 
-      {/* AI Chat Modal */}
-      {showAIChat && (
-        <AIChatModal 
-          isOpen={showAIChat} 
-          onClose={() => setShowAIChat(false)} 
-        />
-      )}
+
 
       {/* Main Content */}
       <div className={`pt-16 ${(networkError || connectionError) ? 'pt-28' : ''}`}>
@@ -167,6 +163,13 @@ const Layout = ({ children, currentPage, onPageChange }: LayoutProps) => {
           {children}
         </div>
       </div>
+
+      {/* AI Chat Modal */}
+      <AIChatModal
+        isOpen={showAIChat}
+        onClose={() => setShowAIChat(false)}
+        context={currentPage}
+      />
     </div>
   );
 };

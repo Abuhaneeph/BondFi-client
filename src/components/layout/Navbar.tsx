@@ -36,6 +36,7 @@ interface TopNavbarProps {
   showMoreMenu: boolean;
   setShowMoreMenu: (show: boolean) => void;
   setShowAIChat: (show: boolean) => void;
+
   txNotifications: any[];
   txNotifBadge: boolean;
   networkError?: string;
@@ -72,16 +73,14 @@ const TopNavbar = ({
   // Primary navigation items (always visible on desktop)
   const primaryNavigation = [
     { name: 'Dashboard', key: 'dashboard', icon: Home },
-
     { name: 'Save', key: 'savings', icon: PiggyBank },
-
-      {name: 'Merchant', key: 'merchant', icon: Shield },
+    { name: 'Merchant', key: 'merchant', icon: Shield },
+    { name: 'Market', key: 'marketplace', icon: DollarSignIcon },
   ];
 
   // Secondary navigation items (in "More" dropdown on desktop, full list on mobile)
   const secondaryNavigation = [
     { name: 'Faucet', key: 'faucet', icon: Droplets },
-  
     { name: 'Admin', key: 'admin', icon: Shield },
   ];
 
@@ -108,12 +107,12 @@ const TopNavbar = ({
   return (
     <>
       {/* Top Navbar */}
-      <div className="bg-white border-b border-stone-200 h-16 fixed top-0 left-0 right-0 z-30">
+      <div className="bg-white border-b border-stone-200 h-16 fixed top-0 left-0 right-0 z-30 will-change-transform transform-gpu">
         <div className="flex items-center h-full px-4 lg:px-8 max-w-7xl mx-auto">
           {/* Logo and Name */}
           <button 
             onClick={() => onPageChange('dashboard')} 
-            className="flex items-center space-x-1 group curser-pointer"
+            className="flex items-center space-x-1 group cursor-pointer"
           >  
             <div className="relative">
               <img 
@@ -123,7 +122,7 @@ const TopNavbar = ({
               />
             </div>
             <div className="flex flex-col">
-                <span className="text-2xl font-bold bg-gradient-to-r from-orange-600 to-red-600 bg-clip-text text-transparent">
+                <span className="text-2xl font-bold bg-gradient-to-r from-orange-600 to-red-600 bg-clip-text text-transparent select-none">
                   BondFi
                 </span>
               </div>
@@ -135,7 +134,7 @@ const TopNavbar = ({
                 key={item.key}
                 onClick={() => onPageChange(item.key)}
                 className={cn(
-                  'flex items-center space-x-2 px-3 py-2 rounded-lg transition-all duration-200 text-sm font-medium whitespace-nowrap',
+                  'flex items-center space-x-2 px-3 py-2 rounded-lg transition-all duration-200 text-sm font-medium whitespace-nowrap select-none',
                   currentPage === item.key
                     ? 'font-bold'
                     : 'text-stone-700 hover:bg-stone-100 hover:text-terracotta'
@@ -149,7 +148,7 @@ const TopNavbar = ({
               <button
                 onClick={() => setShowMoreMenu(!showMoreMenu)}
                 className={cn(
-                  'flex items-center space-x-2 px-3 py-2 rounded-lg transition-all duration-200 text-sm font-medium',
+                  'flex items-center space-x-2 px-3 py-2 rounded-lg transition-all duration-200 text-sm font-medium select-none',
                   isCurrentPageInSecondary
                     ? 'text-terracotta font-bold'
                     : 'text-stone-700 hover:bg-stone-100 hover:text-terracotta'
@@ -172,7 +171,7 @@ const TopNavbar = ({
                         setShowMoreMenu(false);
                       }}
                       className={cn(
-                        'flex items-center space-x-3 w-full px-4 py-2 text-left text-sm transition-colors',
+                        'flex items-center space-x-3 w-full px-4 py-2 text-left text-sm transition-colors select-none',
                         currentPage === item.key
                           ? 'text-terracotta font-bold'
                           : 'text-stone-700 hover:bg-stone-50'
@@ -201,27 +200,28 @@ const TopNavbar = ({
               />
             ) : (
               <button
-                className="p-2 rounded-lg hover:bg-stone-100 transition-colors"
+                className="p-2 rounded-lg hover:bg-stone-100 transition-colors select-none"
                 title="Search"
                 onClick={() => setShowSearch(true)}
               >
                 <Search className="w-5 h-5 text-stone-700" />
               </button>
             )}
+
             {/* AI Chat Button */}
-            <button 
+            <button
               onClick={() => setShowAIChat(true)}
-              className="p-2 rounded-lg hover:bg-stone-100 transition-colors relative group"
+              className="p-2 rounded-lg hover:bg-stone-100 transition-colors relative group select-none"
               title="AI Assistant"
             >
-              <MessageCircle className="w-5 h-5 text-stone-700 group-hover:text-terracotta transition-colors" />
-              <div className="absolute -top-1 -right-1 w-2 h-2 bg-gradient-to-r from-terracotta to-sage rounded-full animate-pulse"></div>
+              <MessageCircle className="w-5 h-5 text-stone-700 group-hover:text-terracotta" />
             </button>
+
             {/* Notifications */}
             <div className="relative">
               <button 
                 onClick={handleNotificationClick}
-                className="p-2 rounded-lg hover:bg-stone-100 transition-colors relative"
+                className="p-2 rounded-lg hover:bg-stone-100 transition-colors relative select-none"
               >
                 <Bell className="w-5 h-5 text-stone-700" />
                 {txNotifBadge && <span className="absolute -top-1 -right-1 w-3 h-3 bg-red-500 rounded-full animate-pulse"></span>}
@@ -293,7 +293,7 @@ const TopNavbar = ({
           <div className="lg:hidden ml-auto">
             <button
               onClick={() => setSidebarOpen(true)}
-              className="p-2 rounded-md hover:bg-stone-100 transition-colors"
+              className="p-2 rounded-md hover:bg-stone-100 transition-colors select-none"
               aria-label="Open menu"
             >
               <Menu className="w-6 h-6 text-stone-700" />

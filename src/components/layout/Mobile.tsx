@@ -25,6 +25,7 @@ interface MobileSidebarProps {
   currentPage: string;
   onPageChange: (page: string) => void;
   setShowAIChat: (show: boolean) => void;
+
   showNotifications: boolean;
   setShowNotifications: (show: boolean) => void;
   isConnected: boolean;
@@ -52,10 +53,8 @@ const MobileSidebar = ({
   // Primary navigation items (always visible on desktop)
   const primaryNavigation = [
     { name: 'Dashboard', key: 'dashboard', icon: Home },
-   
     { name: 'Save', key: 'savings', icon: PiggyBank },
-
-    {name: 'Merchant', key: 'merchant', icon: Shield },
+    { name: 'Merchant', key: 'merchant', icon: Shield },
   ];
 
   // Secondary navigation items (in "More" dropdown on desktop, full list on mobile)
@@ -99,6 +98,19 @@ const MobileSidebar = ({
               {/* Mobile Navigation */}
               <div className="flex-1 overflow-y-auto py-4">
                 <nav className="px-4 space-y-2">
+                  {/* AI Chat Button */}
+                  <button
+                    onClick={() => {
+                      setShowAIChat(true);
+                      setSidebarOpen(false);
+                    }}
+                    className="w-full flex items-center space-x-3 px-4 py-3 text-left text-stone-700 hover:bg-stone-50 rounded-xl transition-colors"
+                  >
+                    <div className="w-8 h-8 bg-gradient-to-br from-terracotta to-sage rounded-lg flex items-center justify-center">
+                      <MessageCircle className="w-4 h-4 text-white" />
+                    </div>
+                    <span className="font-medium">AI Assistant</span>
+                  </button>
                   {allNavigation.map((item) => (
                     <button
                       key={item.key}

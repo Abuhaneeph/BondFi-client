@@ -1,5 +1,5 @@
 import React from 'react';
-import { Users, TrendingUp, ArrowUpRight, ArrowDownLeft, ArrowLeftRight, PiggyBank, ShoppingBag, Wallet, Shield, Star, Clock } from 'lucide-react';
+import { TrendingUp, ArrowUpRight, ArrowDownLeft, ArrowLeftRight, PiggyBank, ShoppingBag, Wallet, Shield, Star } from 'lucide-react';
 import { DollarSignIcon } from "lucide-react";
 import DashboardHeader from './DashboardHeader';
 import { shortenAddress } from '@/lib/utils';
@@ -48,36 +48,11 @@ const ConnectedDashboard: React.FC<ConnectedDashboardProps> = ({
   const selectedCurrencyObj = Currencies.find(c => c.code === selectedCurrency);
   const currencySymbol = selectedCurrencyObj ? selectedCurrencyObj.symbol : selectedToken?.symbol || '';
 
-  // Mock data for ROSCA features
+  // Community stats (simplified without ROSCA)
   const communityStats = {
     reputationScore: 75,
-    activeROSCAs: 1,
-    completedCycles: 0,
     communityTrust: 94
   };
-
-  const activeROSCAs = [
-    {
-      id: 1,
-      name: "Lagos Traders Circle",
-      members: 12,
-      totalPool: 240000,
-      myContribution: 20000,
-      nextPayout: "2024-08-20",
-      position: 4,
-      status: "active"
-    },
-    {
-      id: 2,
-      name: "Tech Workers Savings",
-      members: 8,
-      totalPool: 800000,
-      myContribution: 100000,
-      nextPayout: "2024-09-15",
-      position: 7,
-      status: "upcoming"
-    }
-  ];
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-slate-100">
@@ -143,31 +118,7 @@ const ConnectedDashboard: React.FC<ConnectedDashboardProps> = ({
         </div>
 
         {/* Community Stats */}
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-8">
-          <div className="bg-white/80 backdrop-blur-sm border border-slate-200 rounded-2xl p-6">
-            <div className="flex items-center space-x-3 mb-2">
-              <div className="w-10 h-10 bg-blue-100 rounded-xl flex items-center justify-center">
-                <Users className="w-5 h-5 text-blue-600" />
-              </div>
-              <div>
-                <div className="text-2xl font-bold text-slate-800">{communityStats.activeROSCAs}</div>
-                <div className="text-sm text-slate-500">Active ROSCAs</div>
-              </div>
-            </div>
-          </div>
-
-          <div className="bg-white/80 backdrop-blur-sm border border-slate-200 rounded-2xl p-6">
-            <div className="flex items-center space-x-3 mb-2">
-              <div className="w-10 h-10 bg-purple-100 rounded-xl flex items-center justify-center">
-                <TrendingUp className="w-5 h-5 text-purple-600" />
-              </div>
-              <div>
-                <div className="text-2xl font-bold text-slate-800">{communityStats.completedCycles}</div>
-                <div className="text-sm text-slate-500">Completed Cycles</div>
-              </div>
-            </div>
-          </div>
-
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-8">
           <div className="bg-white/80 backdrop-blur-sm border border-slate-200 rounded-2xl p-6">
             <div className="flex items-center space-x-3 mb-2">
               <div className="w-10 h-10 bg-green-100 rounded-xl flex items-center justify-center">
@@ -179,15 +130,27 @@ const ConnectedDashboard: React.FC<ConnectedDashboardProps> = ({
               </div>
             </div>
           </div>
+
+          <div className="bg-white/80 backdrop-blur-sm border border-slate-200 rounded-2xl p-6">
+            <div className="flex items-center space-x-3 mb-2">
+              <div className="w-10 h-10 bg-blue-100 rounded-xl flex items-center justify-center">
+                <TrendingUp className="w-5 h-5 text-blue-600" />
+              </div>
+              <div>
+                <div className="text-2xl font-bold text-slate-800">{portfolioGrowth}%</div>
+                <div className="text-sm text-slate-500">Portfolio Growth</div>
+              </div>
+            </div>
+          </div>
         </div>
 
         {/* Quick Actions */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
           {[
-            { key: 'join-rosca', title: 'Join ROSCA', subtitle: 'Find savings groups', icon: Users, gradient: 'from-blue-500 to-indigo-500' },
-            { key: 'contribute', title: 'Contribute', subtitle: 'Make payment', icon: PiggyBank, gradient: 'from-green-500 to-emerald-500' },
-            { key: 'pay-merchant', title: 'Pay Merchant', subtitle: 'Installment buy', icon: ShoppingBag, gradient: 'from-purple-500 to-pink-500' },
+            { key: 'deposit', title: 'Contribute', subtitle: 'Make payment', icon: PiggyBank, gradient: 'from-green-500 to-emerald-500' },
+            { key: 'merchant', title: 'Pay Merchant', subtitle: 'Installment buy', icon: ShoppingBag, gradient: 'from-purple-500 to-pink-500' },
             { key: 'send', title: 'Send', subtitle: 'Transfer money', icon: ArrowUpRight, gradient: 'from-orange-500 to-red-500' },
+            { key: 'swap', title: 'Swap', subtitle: 'Exchange tokens', icon: ArrowLeftRight, gradient: 'from-blue-500 to-indigo-500' },
            
           ].map((action) => (
             <button 
@@ -204,66 +167,7 @@ const ConnectedDashboard: React.FC<ConnectedDashboardProps> = ({
           ))}
         </div>
 
-        {/* Active ROSCAs */}
-        <div className="bg-white/60 backdrop-blur-xl border border-slate-200/50 rounded-3xl p-8 shadow-sm mb-8">
-          <div className="flex items-center justify-between mb-6">
-            <h2 className="text-xl font-bold text-slate-800">My ROSCAs</h2>
-            <button 
-              onClick={() => onQuickAction('browse-roscas')}
-              className="text-sm text-blue-600 hover:text-blue-800 font-medium"
-            >
-              Browse All
-            </button>
-          </div>
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            {activeROSCAs.map((rosca) => (
-              <div key={rosca.id} className="bg-gradient-to-br from-slate-50 to-white border border-slate-100 rounded-2xl p-6 hover:shadow-lg transition-all duration-300">
-                <div className="flex items-center justify-between mb-4">
-                  <h3 className="font-semibold text-slate-800">{rosca.name}</h3>
-                  <div className={`px-2 py-1 rounded-full text-xs font-medium ${
-                    rosca.status === 'active' ? 'bg-green-100 text-green-700' : 'bg-yellow-100 text-yellow-700'
-                  }`}>
-                    {rosca.status}
-                  </div>
-                </div>
-                
-                <div className="grid grid-cols-2 gap-4 mb-4">
-                  <div>
-                    <div className="text-sm text-slate-500">Total Pool</div>
-                    <div className="font-semibold text-slate-800">₦{rosca.totalPool.toLocaleString()}</div>
-                  </div>
-                  <div>
-                    <div className="text-sm text-slate-500">Members</div>
-                    <div className="font-semibold text-slate-800">{rosca.members}</div>
-                  </div>
-                </div>
 
-                <div className="mb-4">
-                  <div className="text-sm text-slate-500 mb-2">My Position: #{rosca.position} of {rosca.members}</div>
-                  <div className="w-full bg-slate-200 rounded-full h-2">
-                    <div 
-                      className="bg-gradient-to-r from-blue-500 to-purple-500 h-2 rounded-full" 
-                      style={{ width: `${(rosca.position / rosca.members) * 100}%` }}
-                    ></div>
-                  </div>
-                </div>
-
-                <div className="flex items-center justify-between">
-                  <div>
-                    <div className="text-sm text-slate-500">Next Payout</div>
-                    <div className="font-medium text-slate-800">{new Date(rosca.nextPayout).toLocaleDateString()}</div>
-                  </div>
-                  <div className="flex items-center space-x-1 text-slate-400">
-                    <Clock className="w-4 h-4" />
-                    <span className="text-xs">
-                      {Math.ceil((new Date(rosca.nextPayout).getTime() - Date.now()) / (1000 * 60 * 60 * 24))} days
-                    </span>
-                  </div>
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
 
         {/* Exchange Rates */}
         <div className="bg-white/60 backdrop-blur-xl border border-slate-200/50 rounded-3xl p-8 shadow-sm mb-8">
@@ -328,7 +232,7 @@ const ConnectedDashboard: React.FC<ConnectedDashboardProps> = ({
           {txLoading ? (
             <div className="flex flex-col items-center py-8 sm:py-12">
               <div className="w-8 h-8 sm:w-12 sm:h-12 border-4 border-emerald-200 border-t-emerald-500 rounded-full animate-spin mb-3 sm:mb-4"></div>
-              <p className="text-slate-500 text-xs sm:text-base">Loading transactions...</p>
+              <p className="text-slate-500 text-xs sm:text-base">Loading transactions from blockchain...</p>
             </div>
           ) : transactions.length === 0 ? (
             <div className="text-center py-8 sm:py-12">
@@ -336,7 +240,7 @@ const ConnectedDashboard: React.FC<ConnectedDashboardProps> = ({
                 <ArrowLeftRight className="w-6 h-6 sm:w-8 sm:h-8 text-slate-400" />
               </div>
               <p className="text-slate-500 mb-2 sm:mb-4 text-xs sm:text-base">No transactions yet</p>
-              <p className="text-xs sm:text-sm text-slate-400">Your transaction history will appear here</p>
+              <p className="text-xs sm:text-sm text-slate-400">Your blockchain transaction history will appear here</p>
             </div>
           ) : (
             <div className="overflow-x-auto">
@@ -352,15 +256,30 @@ const ConnectedDashboard: React.FC<ConnectedDashboardProps> = ({
                         {tx.direction === 'sent' ? <ArrowUpRight className="w-5 h-5 text-orange-500" /> : <ArrowDownLeft className="w-5 h-5 text-emerald-500" />}
                       </div>
                       <div className="flex flex-col">
-                        <span className="font-bold text-slate-800 text-base sm:text-base leading-tight">{tx.direction === 'sent' ? 'Sent' : 'Received'} {tx.amount} {tx.token}</span>
-                        <span className="text-xs text-slate-500 font-medium mt-1">{tx.direction === 'sent' ? 'To' : 'From'} {shortenAddress(tx.counterparty)}</span>
-                        <span className="text-[11px] text-slate-400 font-mono mt-1 block sm:hidden">{tx.hash.slice(0, 8)}...{tx.hash.slice(-4)}</span>
-                        <span className="text-[11px] text-slate-400 mt-1 block sm:hidden">{tx.timestamp ? new Date(tx.timestamp * 1000).toLocaleString() : ''}</span>
+                        <span className="font-bold text-slate-800 text-base sm:text-base leading-tight">
+                          {tx.direction === 'sent' ? 'Sent' : 'Received'} {tx.amount.toFixed(6)} {tx.token}
+                        </span>
+                        <span className="text-xs text-slate-500 font-medium mt-1">
+                          {tx.direction === 'sent' ? 'To' : 'From'} {shortenAddress(tx.counterparty)}
+                        </span>
+                        <span className="text-[11px] text-slate-400 font-mono mt-1 block sm:hidden">
+                          Block #{tx.blockNumber} • {tx.hash.slice(0, 8)}...{tx.hash.slice(-4)}
+                        </span>
+                        {tx.gasUsed && tx.gasPrice && (
+                          <span className="text-[11px] text-slate-400 mt-1 block sm:hidden">
+                            Gas: {tx.gasUsed.toLocaleString()} • Fee: ${((tx.gasUsed * tx.gasPrice) / 1e18).toFixed(6)}
+                          </span>
+                        )}
                       </div>
                     </div>
                     <div className="hidden sm:block text-right w-full sm:w-auto">
+                      <div className="text-xs text-slate-400 font-mono">Block #{tx.blockNumber}</div>
                       <div className="text-xs text-slate-400 font-mono">{tx.hash.slice(0, 8)}...{tx.hash.slice(-4)}</div>
-                      <div className="text-xs text-slate-400">{tx.timestamp ? new Date(tx.timestamp * 1000).toLocaleString() : ''}</div>
+                      {tx.gasUsed && tx.gasPrice && (
+                        <div className="text-xs text-slate-400">
+                          Gas: {tx.gasUsed.toLocaleString()} • Fee: ${((tx.gasUsed * tx.gasPrice) / 1e18).toFixed(6)}
+                        </div>
+                      )}
                     </div>
                   </div>
                 ))}

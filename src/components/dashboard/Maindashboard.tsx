@@ -109,46 +109,126 @@ const Dashboard: React.FC<DashboardProps> = ({ onPageChange }) => {
     return () => clearInterval(interval);
   }, [PRICEAPI_CONTRACT_INSTANCE]);
 
-  // Fetch transactions
+  // Fetch transactions from blockchain
   useEffect(() => {
     const fetchTransactions = async () => {
-      if (!isConnected || !address) return;
+      if (!isConnected || !address || !signer) return;
 
       setTxLoading(true);
       setTxError(null);
 
       try {
-        // Simulate fetching transactions (in real app, this would come from blockchain events)
-        const mockTransactions = [
-          {
-            hash: '0x1234567890abcdef1234567890abcdef12345678',
-            direction: 'sent' as const,
-            amount: '100.00',
-            token: 'cNGN',
-            counterparty: '0xabcdef1234567890abcdef1234567890abcdef12',
-            timestamp: Math.floor(Date.now() / 1000) - 3600
-          },
-          {
-            hash: '0xabcdef1234567890abcdef1234567890abcdef12',
-            direction: 'received' as const,
-            amount: '50.00',
-            token: 'cNGN',
-            counterparty: '0x1234567890abcdef1234567890abcdef12345678',
-            timestamp: Math.floor(Date.now() / 1000) - 7200
-          }
-        ];
+        const provider = signer.provider as JsonRpcProvider | undefined;
+        if (!provider) {
+          throw new Error('Provider not available');
+        }
 
-        setTransactions(mockTransactions);
+        const allTransactions: any[] = [];
+        const currentBlock = await provider.getBlockNumber();
+        const fromBlock = Math.max(currentBlock - 10000, 0); // Last 10k blocks
+
+        // Fetch transactions for all supported tokens
+        for (const token of tokens) {
+          if (!token.address) continue;
+
+          let contract;
+          if (token.symbol === 'AFX') {
+            contract = await AFRISTABLE_CONTRACT_INSTANCE();
+          } else {
+            contract = await TEST_TOKEN_CONTRACT_INSTANCE(token.address);
+          }
+
+          if (!contract) continue;
+
+          try {
+            // Fetch Transfer events
+            const sentEvents = await contract.queryFilter(
+              contract.filters.Transfer(address, null),
+              fromBlock,
+              currentBlock
+            );
+
+            const receivedEvents = await contract.queryFilter(
+              contract.filters.Transfer(null, address),
+              fromBlock,
+              currentBlock
+            );
+
+            // Process sent transactions
+            const sent = sentEvents.map(event => ({
+              hash: event.transactionHash,
+              blockNumber: event.blockNumber,
+              direction: 'sent' as const,
+              counterparty: event.args?.to,
+              amount: parseFloat(formatEther(event.args?.value || 0)),
+              token: token.symbol,
+              timestamp: null,
+              gasUsed: null,
+              gasPrice: null
+            }));
+
+            // Process received transactions
+            const received = receivedEvents.map(event => ({
+              hash: event.transactionHash,
+              blockNumber: event.blockNumber,
+              direction: 'received' as const,
+              counterparty: event.args?.from,
+              amount: parseFloat(formatEther(event.args?.value || 0)),
+              token: token.symbol,
+              timestamp: null,
+              gasUsed: null,
+              gasPrice: null
+            }));
+
+            allTransactions.push(...sent, ...received);
+          } catch (error) {
+            console.error(`Error fetching transactions for ${token.symbol}:`, error);
+          }
+        }
+
+        // Fetch transaction details (gas, timestamp) for each unique transaction
+        const uniqueTxs = allTransactions.filter((tx, index, self) => 
+          index === self.findIndex(t => t.hash === tx.hash)
+        );
+
+        const enrichedTxs = await Promise.all(
+          uniqueTxs.map(async (tx) => {
+            try {
+              const txReceipt = await provider.getTransactionReceipt(tx.hash);
+              const txDetails = await provider.getTransaction(tx.hash);
+              
+              return {
+                ...tx,
+                gasUsed: txReceipt?.gasUsed ? parseFloat(txReceipt.gasUsed.toString()) : null,
+                gasPrice: txDetails?.gasPrice ? parseFloat(txDetails.gasPrice.toString()) : null,
+                timestamp: tx.timestamp || null
+              };
+            } catch (error) {
+              console.error(`Error fetching details for tx ${tx.hash}:`, error);
+              return tx;
+            }
+          })
+        );
+
+        // Sort by block number (newest first) and take the most recent 10
+        enrichedTxs.sort((a, b) => b.blockNumber - a.blockNumber);
+        const recentTxs = enrichedTxs.slice(0, 10);
+
+        setTransactions(recentTxs);
       } catch (error) {
         console.error('Error fetching transactions:', error);
-        setTxError('Failed to load transactions');
+        setTxError('Failed to load transactions from blockchain');
       } finally {
         setTxLoading(false);
       }
     };
 
     fetchTransactions();
-  }, [isConnected, address]);
+    
+    // Poll every 30 seconds for new transactions
+    const interval = setInterval(fetchTransactions, 30000);
+    return () => clearInterval(interval);
+  }, [isConnected, address, signer, TEST_TOKEN_CONTRACT_INSTANCE, AFRISTABLE_CONTRACT_INSTANCE]);
 
   // Calculate portfolio growth (simulated)
   useEffect(() => {
