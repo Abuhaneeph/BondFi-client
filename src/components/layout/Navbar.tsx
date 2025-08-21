@@ -23,7 +23,9 @@ import {
   ChevronDown,
   MessageCircle,
   ArrowUpRight,
-  Search
+  Search,
+  Bot,
+  Sparkles
 } from 'lucide-react';
 import { cn } from "@/lib/utils";
 
@@ -214,7 +216,8 @@ const TopNavbar = ({
               className="p-2 rounded-lg hover:bg-stone-100 transition-colors relative group select-none"
               title="AI Assistant"
             >
-              <MessageCircle className="w-5 h-5 text-stone-700 group-hover:text-terracotta" />
+              <Bot className="w-5 h-5 text-stone-700 group-hover:text-terracotta" />
+              <Sparkles className="absolute -bottom-1 -right-1 w-3 h-3 text-yellow-400 opacity-70" />
             </button>
 
             {/* Notifications */}
