@@ -5,8 +5,8 @@ const openai = new OpenAI({
   baseURL: 'https://openrouter.ai/api/v1',
   apiKey: import.meta.env.VITE_OPENROUTER_API_KEY || '<OPENROUTER_API_KEY>',
   defaultHeaders: {
-    'HTTP-Referer': import.meta.env.VITE_SITE_URL || 'https://bondfi.vercel.app/',
-    'X-Title': 'BondFi - AI Assistant',
+    'HTTP-Referer': import.meta.env.VITE_SITE_URL || 'https://FlowPay.vercel.app/',
+    'X-Title': 'FlowPay - AI Assistant',
   },
   dangerouslyAllowBrowser: true,
 });
@@ -15,27 +15,27 @@ const openai = new OpenAI({
 const BONDFI_SYSTEM_PROMPT = `You are the BondFi AI Assistant, an expert in blockchain technology, cryptocurrency, DeFi, and the BondFi platform specifically. You have deep knowledge about:
 
 **BondFi Platform:**
-- DeFi platform built on blockchain technology
-- Supported tokens and stablecoins
-- Core features: Token swapping, Digital savings groups (ROSCA), Send money, Faucet, Buy/Sell, Utility payments
-- Smart contract addresses and blockchain integration
+- First Global DEX for African Stablecoins built on Lisk Blockchain
+- Supported tokens: AFX, cNGN (Nigerian Naira), cZAR (South African Rand), cGHS (Ghanaian Cedi), cKES (Kenyan Shilling), USDT, WETH, AFR
+- Core features: Token swapping, Digital savings groups (Ajo/Esusu), Send money, Faucet, Buy/Sell, Utility payments
+- Smart contract addresses on Lisk Sepolia testnet
 - Agent system for managing savings groups with invite codes
 - Liquidity provision and LP token rewards
 
 **Blockchain & DeFi Expertise:**
-- Blockchain technology and ecosystem
+- Lisk blockchain technology and ecosystem
 - Cross-border stablecoin transactions
 - Liquidity pools and automated market makers (AMM)
 - Yield farming and staking mechanisms
 - Smart contract security and best practices
 - Web3 wallet integration (MetaMask, WalletConnect)
 
-**Financial Context:**
-- Traditional savings systems (ROSCA, Tontine)
-- Cross-border remittances
+**African Financial Context:**
+- Traditional savings systems (Ajo, Esusu, Tontine)
+- Cross-border remittances in Africa
 - Mobile money integration
 - Financial inclusion challenges and solutions
-- Regulatory considerations across markets
+- Regulatory considerations across African markets
 
 **Communication Style:**
 - Be helpful, professional, and knowledgeable
@@ -50,7 +50,7 @@ const BONDFI_SYSTEM_PROMPT = `You are the BondFi AI Assistant, an expert in bloc
 - Remind users about testnet vs mainnet differences
 - Emphasize the importance of seed phrase security
 - Explain gas fees and transaction costs clearly
-- Highlight the benefits of decentralized finance
+- Highlight the benefits of decentralized finance for Africa
 
 Respond as a knowledgeable, helpful assistant focused on empowering users with blockchain and BondFi platform knowledge.`;
 
@@ -98,71 +98,108 @@ export const getAIResponse = async (messages, model = 'openai/gpt-4o') => {
     if (error.status === 401) {
       throw new Error('Invalid API key. Please check your OpenRouter configuration.');
     } else if (error.status === 429) {
-      throw new Error('Rate limit exceeded. Please try again later.');
-    } else if (error.status === 500) {
-      throw new Error('AI service temporarily unavailable. Please try again.');
-    } else if (error.code === 'NETWORK_ERROR') {
+      throw new Error('Rate limit exceeded. Please try again in a moment.');
+    } else if (error.status >= 500) {
+      throw new Error('OpenRouter service temporarily unavailable. Please try again.');
+    } else if (error.message.includes('model')) {
+      throw new Error('Selected AI model is not available. Please try again with a different model.');
+    } else if (error.message.includes('network')) {
       throw new Error('Network error. Please check your internet connection.');
+    } else {
+      throw new Error(`Failed to get AI response: ${error.message}`);
     }
-    
-    // Generic error message
-    throw new Error('AI service error. Please try again later.');
   }
 };
 
 /**
- * Get contextual help based on the current page/context
- * @param {string} context - The current context (e.g., 'dashboard', 'savings', 'merchant')
- * @returns {string} - Contextual help message
+ * Get a quick response for common BondFi queries
+ * @param {string} query - User query
+ * @returns {Promise<string>} - AI response
  */
-export const getContextualHelp = (context = 'general') => {
-  const helpMessages = {
-    dashboard: "I can help you with your BondFi dashboard! Ask me about your portfolio, recent transactions, or how to use specific features.",
-    savings: "Need help with savings groups (ROSCA)? I can explain how to create or join groups, manage contributions, and understand the process.",
-    merchant: "Merchant services questions? I can help with payment processing, integration, and merchant account management.",
-    ai: "I'm here to help! Ask me anything about BondFi, blockchain, DeFi, or general financial questions.",
-    general: "Welcome to BondFi! I'm your AI assistant. How can I help you today?"
-  };
+export const getQuickBondFiResponse = async (query) => {
+  const messages = [
+    {
+      role: 'user',
+      content: query
+    }
+  ];
   
-  return helpMessages[context] || helpMessages.general;
+  return await getAIResponse(messages);
 };
 
 /**
- * Check if OpenRouter is properly configured
- * @returns {boolean} - True if configured, false otherwise
+ * Get contextual help based on current page/feature
+ * @param {string} context - Current page context (e.g., 'swap', 'savings', 'dashboard')
+ * @param {string} userQuestion - User's specific question
+ * @returns {Promise<string>} - Contextual AI response
+ */
+export const getContextualHelp = async (context, userQuestion) => {
+  const contextPrompts = {
+    swap: "The user is currently on the BondFi swap page where they can exchange African stablecoins and other tokens. They can add liquidity to pools and earn rewards.",
+    savings: "The user is on the BondFi savings (Ajo/Esusu) page where they can join or create traditional rotating savings groups with smart contract automation.",
+    dashboard: "The user is viewing their BondFi dashboard with wallet balances, exchange rates, and portfolio overview.",
+    send: "The user is on the send money page for transferring tokens to other addresses.",
+    faucet: "The user is using the testnet faucet to get test tokens for trying out BondFi features.",
+    buysell: "The user is on the buy/sell page for converting between fiat and cryptocurrencies."
+  };
+
+  const messages = [
+    {
+      role: 'user',
+      content: `Context: ${contextPrompts[context] || 'General BondFi platform usage'}\n\nUser Question: ${userQuestion}`
+    }
+  ];
+  
+  return await getAIResponse(messages);
+};
+
+/**
+ * Check if OpenRouter API is properly configured
+ * @returns {boolean} - Configuration status
  */
 export const isConfigured = () => {
   const apiKey = import.meta.env.VITE_OPENROUTER_API_KEY;
-  return apiKey && apiKey !== '<OPENROUTER_API_KEY>' && apiKey.length > 0;
-};
-
-/**
- * Get available AI models
- * @returns {Array} - Array of available model objects
- */
-export const getAvailableModels = () => {
-  return [
-    { id: 'openai/gpt-4o', name: 'GPT-4o', description: 'Most capable model, best for complex tasks' },
-    { id: 'openai/gpt-4o-mini', name: 'GPT-4o Mini', description: 'Fast and efficient, good for most tasks' },
-    { id: 'anthropic/claude-3-5-sonnet', name: 'Claude 3.5 Sonnet', description: 'Excellent reasoning and analysis' },
-    { id: 'meta-llama/llama-3.1-8b-instruct', name: 'Llama 3.1 8B', description: 'Fast and lightweight' },
-    { id: 'google/gemini-pro', name: 'Gemini Pro', description: 'Good for creative and analytical tasks' }
-  ];
-};
-
-/**
- * Get model pricing information
- * @param {string} model - Model ID
- * @returns {Object} - Pricing information
- */
-export const getModelPricing = (model) => {
-  const pricing = {
-    'openai/gpt-4o': { input: 0.0025, output: 0.01 },
-    'openai/gpt-4o-mini': { input: 0.00015, output: 0.0006 },
-    'anthropic/claude-3-5-sonnet': { input: 0.003, output: 0.015 },
-    'meta-llama/llama-3.1-8b-instruct': { input: 0.0002, output: 0.0002 },
-    'google/gemini-pro': { input: 0.0005, output: 0.0015 }
-  };
+  const siteUrl = import.meta.env.VITE_SITE_URL;
   
-  return pricing[model] || { input: 0.001, output: 0.002 };
+  // Check if API key exists and is properly formatted
+  if (!apiKey || apiKey === '<OPENROUTER_API_KEY>' || apiKey.length < 10) {
+    console.error('OpenRouter API key is not properly configured');
+    return false;
+  }
+
+  // Check if site URL is configured
+  if (!siteUrl) {
+    console.error('Site URL is not configured for OpenRouter');
+    return false;
+  }
+
+  return true;
+};
+
+/**
+ * Get available models from OpenRouter
+ * @returns {Promise<Array>} - Array of available models
+ */
+export const getAvailableModels = async () => {
+  try {
+    const response = await fetch('https://openrouter.ai/api/v1/models', {
+      headers: {
+        'Authorization': `Bearer ${import.meta.env.VITE_OPENROUTER_API_KEY}`,
+      },
+    });
+    
+    const data = await response.json();
+    return data.data || [];
+  } catch (error) {
+    console.error('Failed to fetch models:', error);
+    return [];
+  }
+};
+
+export default {
+  getAIResponse,
+  getQuickBondFiResponse,
+  getContextualHelp,
+  isConfigured,
+  getAvailableModels
 };
