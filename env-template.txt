@@ -1,0 +1,19 @@
+# Copy this file to .env and fill in your actual values
+
+# AI Configuration - Required for AI modal to work
+VITE_OPENROUTER_API_KEY=your_openrouter_api_key_here
+
+# Site URL for OpenRouter
+VITE_SITE_URL=https://bondfi.vercel.app/
+
+# Optional AI Settings
+VITE_AI_MODEL=openai/gpt-4o
+VITE_AI_TEMPERATURE=0.7
+VITE_AI_MAX_TOKENS=1000
+
+# Instructions:
+# 1. Copy this file and rename it to .env
+# 2. Get your API key from https://openrouter.ai/
+# 3. Replace 'your_openrouter_api_key_here' with your actual key
+# 4. Restart your development server
+# 5. The AI modal should now work!
