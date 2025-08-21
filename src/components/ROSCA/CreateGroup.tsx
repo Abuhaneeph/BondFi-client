@@ -16,7 +16,7 @@ import tokens from '@/lib/Tokens/tokens';
 
 const CreateGroup = () => {
   const { toast } = useToast();
-  const { SAVING_CONTRACT_INSTANCE, TEST_TOKEN_CONTRACT_INSTANCE,    MULTICURRENCY_SAVING_CONTRACT_INSTANCE } = useContractInstances();
+  const { SAVING_CONTRACT_INSTANCE,  MULTICURRENCY_SAVING_CONTRACT_INSTANCE } = useContractInstances();
 
   // Token options for the group - using valid testnet addresses
   const getSupportedTokens = () => {

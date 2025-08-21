@@ -145,12 +145,12 @@ const ConnectedDashboard: React.FC<ConnectedDashboardProps> = ({
         </div>
 
         {/* Quick Actions */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 mb-8">
           {[
             { key: 'deposit', title: 'Contribute', subtitle: 'Make payment', icon: PiggyBank, gradient: 'from-green-500 to-emerald-500' },
             { key: 'merchant', title: 'Pay Merchant', subtitle: 'Installment buy', icon: ShoppingBag, gradient: 'from-purple-500 to-pink-500' },
             { key: 'send', title: 'Send', subtitle: 'Transfer money', icon: ArrowUpRight, gradient: 'from-orange-500 to-red-500' },
-            { key: 'swap', title: 'Swap', subtitle: 'Exchange tokens', icon: ArrowLeftRight, gradient: 'from-blue-500 to-indigo-500' },
+           
            
           ].map((action) => (
             <button 
