@@ -1,7 +1,7 @@
-import React, { useEffect, useState } from 'react';
-import { DollarSign, Users, Star, Calendar, TrendingUp, Wallet, Shield } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { DollarSign, Users, Star, Calendar, TrendingUp, Wallet, Shield, CheckCircle, Loader } from 'lucide-react';
 import { useContractInstances } from '@/provider/ContractInstanceProvider';
-import { useAccount } from 'wagmi';
+import tokens from '@/lib/Tokens/tokens';
 
 interface ROSCAStatsProps {
   userInfo: any;
@@ -9,228 +9,216 @@ interface ROSCAStatsProps {
 }
 
 const ROSCAStats: React.FC<ROSCAStatsProps> = ({ userInfo, isLoading = false }) => {
-  const { SAVING_CONTRACT_INSTANCE } = useContractInstances();
-  const { address } = useAccount();
-  const [userGroups, setUserGroups] = useState<any[]>([]);
-  const [groupsLoading, setGroupsLoading] = useState(false);
+  // State management (same pattern as AjoEsusuInterface)
+  const [myGroups, setMyGroups] = useState([]);
+  const [totalStats, setTotalStats] = useState(null);
+  const [isStatsLoading, setIsStatsLoading] = useState(false);
+  const [supportedTokens, setSupportedTokens] = useState([]);
 
-  // Safe JSON stringify that handles BigInt values
-  const safeStringify = (obj: any, space?: number) => {
+  const { isConnected, SAVING_CONTRACT_INSTANCE, address } = useContractInstances();
+
+  // Get supported tokens (excluding ETH which is id: 1) - same as AjoEsusuInterface
+  const getSupportedTokens = () => {
+    return tokens.filter(token => token.id > 1);
+  };
+
+  // Format token amounts - same logic as AjoEsusuInterface
+  const formatTokenAmount = (amountInWei, decimals = 18) => {
+    if (!amountInWei) return '$0';
+    const divisor = Math.pow(10, decimals);
+    return `$${(parseFloat(amountInWei) / divisor).toFixed(2)}`;
+  };
+
+  // Get time remaining - same logic as AjoEsusuInterface
+  const getTimeRemaining = (timestamp) => {
+    const now = Math.floor(Date.now() / 1000);
+    const remaining = Number(timestamp) - now;
+    
+    if (remaining <= 0) return "Expired";
+    
+    const days = Math.floor(remaining / 86400);
+    const hours = Math.floor((remaining % 86400) / 3600);
+    const minutes = Math.floor((remaining % 3600) / 60);
+    
+    if (days > 0) return `${days}d ${hours}h ${minutes}m`;
+    if (hours > 0) return `${hours}h ${minutes}m`;
+    return `${minutes}m`;
+  };
+
+  // Initialize data - adapted from AjoEsusuInterface
+  const initializeStatsData = async () => {
+    if (!isConnected || !address) return;
+    
+    setIsStatsLoading(true);
     try {
-      return JSON.stringify(obj, (key, value) => {
-        if (typeof value === 'bigint') {
-          return value.toString();
-        }
-        return value;
-      }, space);
+      const Saving_Contract = await SAVING_CONTRACT_INSTANCE();
+      
+      // Get user's groups - same logic as AjoEsusuInterface
+      const userGroupIds = await Saving_Contract.getUserGroups(address);
+      const userGroupsData = await Promise.all(
+        userGroupIds.map(async (groupId) => {
+          const summary = await Saving_Contract.getGroupSummary(groupId);
+          const savingInfo = await Saving_Contract.savingsGroups(groupId);
+          const contributionStatus = await Saving_Contract.getUserContributionStatus(groupId, address);
+          
+          return { 
+            ...summary, 
+            contributionStatus,
+            groupId
+          };
+        })
+      );
+      setMyGroups(userGroupsData);
+      
+      // Get supported tokens
+      const tokenData = await Saving_Contract.getSupportedTokens();
+      setSupportedTokens(tokenData);
+      
+      // Get total stats
+      const stats = await Saving_Contract.getTotalStats();
+      setTotalStats(stats);
+      
     } catch (error) {
-      console.error('Error stringifying object:', error);
-      return 'Error serializing data';
+      console.error('Error initializing stats data:', error);
     }
+    setIsStatsLoading(false);
   };
 
-  const formatTokenAmount = (amountInWei: any, decimals = 18) => {
-    if (!amountInWei) return '₦0';
-    
-    try {
-      // Handle BigInt values
-      const amount = typeof amountInWei === 'bigint' 
-        ? amountInWei.toString() 
-        : amountInWei.toString();
-      
-      const divisor = Math.pow(10, decimals);
-      const parsedAmount = parseFloat(amount) / divisor;
-      
-      if (isNaN(parsedAmount)) return '₦0';
-      
-      return `₦${parsedAmount.toLocaleString()}`;
-    } catch (error) {
-      console.error('Error formatting token amount:', error);
-      return '₦0';
+  // Effect hook - same pattern as AjoEsusuInterface
+  useEffect(() => {
+    if (isConnected && address && userInfo) {
+      initializeStatsData();
     }
+  }, [isConnected, address, userInfo]);
+
+  // Calculate next payout deadline from active groups
+  const getNextPayoutDeadline = () => {
+    if (!myGroups || myGroups.length === 0) return 'No active groups';
+    
+    // Find groups where user is the current recipient
+    const recipientGroups = myGroups.filter(group => 
+      group[14] === address && group[10] // currentRecipient === user && isActive
+    );
+    
+    if (recipientGroups.length > 0) {
+      return 'Claim available!';
+    }
+    
+    // Find next contribution deadline from active groups
+    const activeGroups = myGroups.filter(group => 
+      group[10] && !group[11] && !group.contributionStatus?.[0] // active, not completed, not contributed
+    );
+    
+    if (activeGroups.length === 0) return 'All contributions up to date';
+    
+    // Get earliest deadline
+    let earliestDeadline = null;
+    let earliestGroup = null;
+    
+    activeGroups.forEach(group => {
+      const deadline = group[13]; // nextContributionDeadline
+      if (deadline && (!earliestDeadline || Number(deadline) < Number(earliestDeadline))) {
+        earliestDeadline = deadline;
+        earliestGroup = group;
+      }
+    });
+    
+    if (!earliestDeadline) return 'No pending deadlines';
+    
+    return getTimeRemaining(earliestDeadline);
   };
 
-  // Calculate time remaining for next payout
-  const getTimeRemaining = (timestamp: any) => {
-    if (!timestamp) return 'N/A';
+  // Calculate total potential payout from active groups
+  const getTotalPotentialPayout = () => {
+    if (!myGroups || myGroups.length === 0) return '$0';
     
-    try {
-      // Handle BigInt values
-      const timestampValue = typeof timestamp === 'bigint' 
-        ? timestamp.toString() 
-        : timestamp.toString();
-      
-      const now = Math.floor(Date.now() / 1000);
-      const remaining = Number(timestampValue) - now;
-      
-      if (remaining <= 0) return "Expired";
-      
-      const days = Math.floor(remaining / 86400);
-      const hours = Math.floor((remaining % 86400) / 3600);
-      const minutes = Math.floor((remaining % 3600) / 60);
-      
-      if (days > 0) return `${days} Days`;
-      if (hours > 0) return `${hours} Hours`;
-      return `${minutes} Minutes`;
-    } catch (error) {
-      console.error('Error calculating time remaining:', error);
-      return 'N/A';
-    }
+    const activeGroups = myGroups.filter(group => group[10] && !group[11]); // active but not completed
+    
+    let totalPayout = 0;
+    activeGroups.forEach(group => {
+      const contributionAmount = parseFloat(group[5] || 0); // contributionAmount
+      const maxMembers = parseInt(group[7]?.toString() || '0'); // maxMembers
+      totalPayout += contributionAmount * maxMembers;
+    });
+    
+    return formatTokenAmount(totalPayout.toString());
   };
 
-  // Validate user data structure from smart contract
-  const validateUserData = (userInfo: any[]): boolean => {
-    if (!userInfo || !Array.isArray(userInfo) || userInfo.length < 10) {
-      console.error('Invalid user data structure:', userInfo);
-      return false;
-    }
-    
-    // Check for reasonable values
-    const reputation = parseInt(userInfo[7]);
-    if (reputation < 0 || reputation > 100) {
-      console.warn('Invalid reputation score:', reputation);
-    }
-    
-    const activeGroups = parseInt(userInfo[3]);
-    const completedGroups = parseInt(userInfo[4]);
-    if (activeGroups < 0 || completedGroups < 0) {
-      console.warn('Invalid group counts:', { activeGroups, completedGroups });
-    }
-    
-    return true;
-  };
-
-  // Get user stats from smart contract data with validation
+  // Get user stats - same structure as AjoEsusuInterface userInfo
   const getUserStats = () => {
     if (!userInfo) {
       return {
-        totalContributed: 0,
-        payoutsReceived: 0,
-        nextPayout: 'Not Registered',
-        reputationScore: 0,
+        totalContributed: '$0',
         activeGroups: 0,
         completedGroups: 0,
-        userName: '',
-        isRegistered: false,
-        hasDefaulted: false,
-        joinDate: 'N/A'
+        reputationScore: 0,
+        nextPayout: 'Not registered',
+        hasDefaulted: false
       };
     }
 
     try {
-      // Validate data structure first
-      if (!validateUserData(userInfo)) {
-        throw new Error('Invalid user data structure');
-      }
-
-      // The smart contract returns an array with this structure:
+      // userInfo structure from AjoEsusuInterface getMemberInfo:
       // [name, totalContributions, totalReceived, activeGroups, completedGroups, hasRegistered, hasDefaulted, reputationScore, joinDate, lastActivity]
-      const stats = {
-        totalContributed: userInfo[1] || 0, // totalContributions
-        payoutsReceived: userInfo[2] || 0,   // totalReceived
-        nextPayout: userInfo[9] ? getTimeRemaining(userInfo[9]) : 'N/A', // lastActivity
-        reputationScore: parseInt(userInfo[7]) || 0,   // reputationScore
-        activeGroups: parseInt(userInfo[3]) || 0,      // activeGroups
-        completedGroups: parseInt(userInfo[4]) || 0,   // completedGroups
-        userName: userInfo[0] || 'Unknown',            // name
-        isRegistered: Boolean(userInfo[5]),            // hasRegistered
-        hasDefaulted: Boolean(userInfo[6]),            // hasDefaulted
-        joinDate: userInfo[8] ? new Date(parseInt(userInfo[8]) * 1000).toLocaleDateString() : 'N/A' // joinDate
+      
+      return {
+        totalContributed: formatTokenAmount(userInfo[1] || 0), // totalContributions
+        activeGroups: parseInt(userInfo[3]?.toString() || '0'), // activeGroups
+        completedGroups: parseInt(userInfo[4]?.toString() || '0'), // completedGroups  
+        reputationScore: parseInt(userInfo[7]?.toString() || '0'), // reputationScore
+        nextPayout: getNextPayoutDeadline(),
+        hasDefaulted: Boolean(userInfo[6]) // hasDefaulted
       };
-
-      console.log('Processed user stats:', stats);
-      return stats;
     } catch (error) {
       console.error('Error processing user stats:', error);
       return {
-        totalContributed: 0,
-        payoutsReceived: 0,
-        nextPayout: 'Error',
-        reputationScore: 0,
+        totalContributed: '$0',
         activeGroups: 0,
         completedGroups: 0,
-        userName: '',
-        isRegistered: false,
-        hasDefaulted: false,
-        joinDate: 'N/A'
+        reputationScore: 0,
+        nextPayout: 'Error loading',
+        hasDefaulted: false
       };
     }
   };
 
-  // Fetch user groups from blockchain
-  const fetchUserGroups = async () => {
-    if (!address || !SAVING_CONTRACT_INSTANCE) return;
-    
-    try {
-      setGroupsLoading(true);
-      const Saving_Contract = await SAVING_CONTRACT_INSTANCE();
-      
-      // Get user's group IDs
-      const userGroupIds = await Saving_Contract.getUserGroups(address);
-      console.log('User group IDs:', userGroupIds);
-      
-      // Fetch detailed information for each group
-      const groupsData = await Promise.all(
-        userGroupIds.map(async (groupId: any) => {
-          try {
-            const groupSummary = await Saving_Contract.getGroupSummary(groupId);
-            const groupDetails = await Saving_Contract.getGroupDetails(groupId);
-            
-            return {
-              groupId: groupId.toString(),
-              name: groupSummary.name || groupDetails[0] || `Group ${groupId}`,
-              description: groupDetails[1] || '',
-              creator: groupSummary.creator || groupDetails[2] || '',
-              creatorName: groupSummary.creatorName || groupDetails[3] || '',
-              contributionAmount: groupSummary.contributionAmount || groupDetails[6] || 0,
-              maxMembers: groupSummary.maxMembers || groupDetails[9] || 0,
-              currentMembers: groupSummary.currentMembers || groupDetails[8] || 0,
-              currentRound: groupSummary.currentRound || groupDetails[10] || 0,
-              totalRounds: groupSummary.totalRounds || groupDetails[11] || 0,
-              isActive: groupSummary.isActive || groupDetails[12] || false,
-              isCompleted: groupSummary.isCompleted || groupDetails[13] || false,
-              nextContributionDeadline: groupSummary.nextContributionDeadline || groupDetails[15] || 0,
-              startTime: groupDetails[14] || 0
-            };
-          } catch (error) {
-            console.error(`Error fetching group ${groupId}:`, error);
-            return null;
-          }
-        })
-      );
-      
-      // Filter out null values and set groups
-      const validGroups = groupsData.filter(group => group !== null);
-      setUserGroups(validGroups);
-      console.log('Fetched user groups:', validGroups);
-      
-    } catch (error) {
-      console.error('Error fetching user groups:', error);
-    } finally {
-      setGroupsLoading(false);
-    }
+  // Count groups created by user
+  const getGroupsCreatedCount = () => {
+    if (!myGroups || !address) return 0;
+    return myGroups.filter(group => group[2] === address).length; // creator === user
   };
-
-  // Fetch groups when component mounts or userInfo changes
-  useEffect(() => {
-    if (userInfo && address) {
-      fetchUserGroups();
-    }
-  }, [userInfo, address]);
 
   const stats = getUserStats();
 
   // Show loading state
-  if (isLoading) {
+  if (isLoading || isStatsLoading) {
+    return (
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-6">
+        {[1, 2, 3, 4].map((i) => (
+          <div key={i} className="bg-white rounded-2xl p-6 shadow-sm border border-stone-200">
+            <div className="animate-pulse">
+              <div className="flex items-center space-x-3 mb-4">
+                <div className="w-10 h-10 bg-stone-300 rounded-full"></div>
+                <div className="h-4 bg-stone-300 rounded w-24"></div>
+              </div>
+              <div className="h-8 bg-stone-300 rounded w-20 mb-2"></div>
+              <div className="h-3 bg-stone-300 rounded w-16"></div>
+            </div>
+          </div>
+        ))}
+      </div>
+    );
+  }
+
+  // Show connection prompt - same as AjoEsusuInterface
+  if (!isConnected) {
     return (
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
         <div className="md:col-span-4">
-          <div className="bg-gray-50 border border-gray-200 rounded-xl p-6 text-center">
-            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto mb-4"></div>
-            <h3 className="text-lg font-semibold text-gray-800 mb-2">Loading User Data</h3>
-            <p className="text-gray-600">
-              Fetching your ROSCA statistics from the blockchain...
-            </p>
+          <div className="bg-white rounded-2xl p-8 shadow-sm border border-stone-200 text-center">
+            <Shield className="w-16 h-16 text-terracotta mx-auto mb-4" />
+            <h3 className="text-xl font-semibold text-stone-800 mb-2">Connect Your Wallet</h3>
+            <p className="text-stone-600">Please connect your wallet to view your statistics</p>
           </div>
         </div>
       </div>
@@ -242,14 +230,14 @@ const ROSCAStats: React.FC<ROSCAStatsProps> = ({ userInfo, isLoading = false }) 
     return (
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
         <div className="md:col-span-4">
-          <div className="bg-blue-50 border border-blue-200 rounded-xl p-6 text-center">
-            <Shield className="h-12 w-12 text-blue-600 mx-auto mb-4" />
-            <h3 className="text-lg font-semibold text-blue-800 mb-2">Not Registered</h3>
-            <p className="text-blue-600 mb-4">
-              You need to register on the blockchain to start using ROSCA features.
+          <div className="bg-white rounded-2xl p-8 shadow-sm border border-stone-200 text-center">
+            <Users className="w-16 h-16 text-terracotta mx-auto mb-4" />
+            <h3 className="text-xl font-semibold text-stone-800 mb-2">Welcome to BondFi ROSCA</h3>
+            <p className="text-stone-600 mb-4">
+              Register to start participating in traditional rotating savings circles
             </p>
-            <p className="text-sm text-blue-500">
-              Check the console for debugging information about your connection status.
+            <p className="text-stone-500 text-sm">
+              Connect your wallet and register to view your statistics
             </p>
           </div>
         </div>
@@ -257,80 +245,127 @@ const ROSCAStats: React.FC<ROSCAStatsProps> = ({ userInfo, isLoading = false }) 
     );
   }
 
-    return (
-    <div className="space-y-6">
+  return (
+    <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-6">
+      {/* Total Contributed Card */}
+      <div className="bg-white rounded-2xl p-6 shadow-sm border border-stone-200">
+        <div className="flex items-center space-x-3 mb-4">
+          <div className="w-10 h-10 bg-sage/10 rounded-full flex items-center justify-center">
+            <DollarSign className="w-5 h-5 text-sage" />
+          </div>
+          <h3 className="font-semibold text-stone-800">Total Contributions</h3>
+        </div>
+        <p className="text-2xl font-bold text-stone-800 mb-1">
+          {stats.totalContributed}
+        </p>
+        <p className="text-sage text-sm">
+          Across {stats.activeGroups} active group{stats.activeGroups !== 1 ? 's' : ''}
+        </p>
+      </div>
 
+      {/* Potential Payout Card */}
+      <div className="bg-white rounded-2xl p-6 shadow-sm border border-stone-200">
+        <div className="flex items-center space-x-3 mb-4">
+          <div className="w-10 h-10 bg-emerald-500/10 rounded-full flex items-center justify-center">
+            <TrendingUp className="w-5 h-5 text-emerald-600" />
+          </div>
+          <h3 className="font-semibold text-stone-800">Potential Payout</h3>
+        </div>
+        <p className="text-2xl font-bold text-emerald-600 mb-1">
+          {getTotalPotentialPayout()}
+        </p>
+        <p className="text-emerald-600 text-sm">
+          When your turn comes
+        </p>
+      </div>
 
-       {/* Stats Grid */}
-       <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
-         {/* Total Contributed Card */}
-         <div className="bg-white/80 backdrop-blur-sm rounded-xl p-4 border border-stone-100 hover:bg-white/90 transition-all duration-200 shadow-sm hover:shadow-lg">
-           <div className="flex items-center mb-3">
-             <div className="w-10 h-10 bg-gradient-to-br from-green-500/20 to-green-600/10 rounded-xl flex items-center justify-center">
-               <Wallet className="w-5 h-5 text-green-600" />
-             </div>
-           </div>
-           <h3 className="font-semibold text-stone-800 mb-2 text-sm">Total Contributed</h3>
-           <p className="text-2xl font-bold text-stone-800 mb-1">
-             {formatTokenAmount(stats.totalContributed)}
-           </p>
-           <p className="text-green-600 text-xs font-medium">
-             {stats.activeGroups} active groups
-           </p>
-         </div>
+      {/* Next Action Card */}
+      <div className="bg-white rounded-2xl p-6 shadow-sm border border-stone-200">
+        <div className="flex items-center space-x-3 mb-4">
+          <div className="w-10 h-10 bg-terracotta/10 rounded-full flex items-center justify-center">
+            <Calendar className="w-5 h-5 text-terracotta" />
+          </div>
+          <h3 className="font-semibold text-stone-800">Next Action</h3>
+        </div>
+        <p className="text-2xl font-bold text-stone-800 mb-1">
+          {stats.nextPayout}
+        </p>
+        <p className="text-stone-500 text-sm">
+          {stats.nextPayout.includes('d') || stats.nextPayout.includes('h') || stats.nextPayout.includes('m') 
+            ? 'Time remaining' : 'Status'}
+        </p>
+      </div>
 
-         {/* Payouts Received Card */}
-         <div className="bg-white/80 backdrop-blur-sm rounded-xl p-4 border border-stone-100 hover:bg-white/90 transition-all duration-200 shadow-sm hover:shadow-lg">
-           <div className="flex items-center mb-3">
-             <div className="w-10 h-10 bg-gradient-to-br from-blue-500/20 to-blue-600/10 rounded-xl flex items-center justify-center">
-               <TrendingUp className="w-5 h-5 text-blue-600" />
-             </div>
-           </div>
-           <h3 className="font-semibold text-stone-800 mb-2 text-sm">Payouts Received</h3>
-           <p className="text-2xl font-bold text-stone-800 mb-1">
-             {formatTokenAmount(stats.payoutsReceived)}
-           </p>
-           <p className="text-blue-600 text-xs font-medium">
-             {stats.completedGroups} completed groups
-           </p>
-         </div>
+      {/* Reputation Score Card */}
+      <div className="bg-white rounded-2xl p-6 shadow-sm border border-stone-200">
+        <div className="flex items-center space-x-3 mb-4">
+          <div className="w-10 h-10 bg-gold/10 rounded-full flex items-center justify-center">
+            <Star className="w-5 h-5 text-gold" />
+          </div>
+          <h3 className="font-semibold text-stone-800">Reputation Score</h3>
+        </div>
+        <p className="text-2xl font-bold text-stone-800 mb-1">
+          {stats.reputationScore}/100
+        </p>
+        <div className="flex items-center space-x-2">
+          {stats.hasDefaulted ? (
+            <>
+              <div className="w-2 h-2 bg-red-500 rounded-full"></div>
+              <p className="text-red-600 text-sm">Has defaults</p>
+            </>
+          ) : (
+            <>
+              <CheckCircle className="w-4 h-4 text-emerald-600" />
+              <p className="text-emerald-600 text-sm">Good standing</p>
+            </>
+          )}
+        </div>
+      </div>
 
-         {/* Next Payout Card */}
-         <div className="bg-white/80 backdrop-blur-sm rounded-xl p-4 border border-stone-100 hover:bg-white/90 transition-all duration-200 shadow-sm hover:shadow-lg">
-           <div className="flex items-center mb-3">
-             <div className="w-10 h-10 bg-gradient-to-br from-orange-500/20 to-orange-600/10 rounded-xl flex items-center justify-center">
-               <Calendar className="w-5 h-5 text-orange-600" />
-             </div>
-           </div>
-           <h3 className="font-semibold text-stone-800 mb-2 text-sm">Next Payout</h3>
-           <p className="text-2xl font-bold text-stone-800 mb-1">
-             {stats.nextPayout}
-           </p>
-           <p className="text-stone-500 text-xs">
-             Based on activity
-           </p>
-         </div>
-
-         {/* Reputation Score Card */}
-         <div className="bg-white/80 backdrop-blur-sm rounded-xl p-4 border border-stone-100 hover:bg-white/90 transition-all duration-200 shadow-sm hover:shadow-lg">
-           <div className="flex items-center mb-3">
-             <div className="w-10 h-10 bg-gradient-to-br from-yellow-500/20 to-yellow-600/10 rounded-xl flex items-center justify-center">
-               <Star className="w-5 h-5 text-yellow-600" />
-             </div>
-           </div>
-           <h3 className="font-semibold text-stone-800 mb-2 text-sm">Reputation Score</h3>
-           <p className="text-2xl font-bold text-stone-800 mb-1">
-             {stats.reputationScore}/100
-           </p>
-           <p className="text-yellow-600 text-xs font-medium">
-             Trust Score
-           </p>
-                  </div>
-       </div>
-
-
-     </div>
-   );
- };
+      {/* Groups Summary Card - Full width */}
+      <div className="md:col-span-4">
+        <div className="bg-gradient-to-br from-stone-50 to-stone-100 rounded-2xl p-6 border border-stone-200">
+          <div className="flex items-center justify-between mb-6">
+            <div className="flex items-center space-x-3">
+              <div className="w-10 h-10 bg-stone-200 rounded-full flex items-center justify-center">
+                <Users className="w-5 h-5 text-stone-600" />
+              </div>
+              <h3 className="font-semibold text-stone-800">Groups Overview</h3>
+            </div>
+            {totalStats && (
+              <div className="text-right">
+                <p className="text-sm text-stone-600">Platform Total</p>
+                <p className="text-xl font-bold text-stone-800">
+                  {totalStats[0]?.toString()} groups
+                </p>
+              </div>
+            )}
+          </div>
+          
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+            <div className="text-center p-4 bg-white rounded-xl">
+              <p className="text-2xl font-bold text-blue-600">{stats.activeGroups}</p>
+              <p className="text-stone-600 text-sm">Active Groups</p>
+            </div>
+            <div className="text-center p-4 bg-white rounded-xl">
+              <p className="text-2xl font-bold text-emerald-600">{stats.completedGroups}</p>
+              <p className="text-stone-600 text-sm">Completed Groups</p>
+            </div>
+            <div className="text-center p-4 bg-white rounded-xl">
+              <p className="text-2xl font-bold text-amber-600">{getGroupsCreatedCount()}</p>
+              <p className="text-stone-600 text-sm">Groups Created</p>
+            </div>
+            <div className="text-center p-4 bg-white rounded-xl">
+              <p className="text-2xl font-bold text-stone-800">
+                {myGroups ? myGroups.length : 0}
+              </p>
+              <p className="text-stone-600 text-sm">Total Groups</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};
 
 export default ROSCAStats;

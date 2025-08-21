@@ -93,10 +93,7 @@ const Footer: React.FC<FooterProps> = ({ onPageChange }) => {
             </div>
             
               </div>
-              <p className="text-gray-400 mb-6 leading-relaxed">
-               Africa’s Stablecoin Gateway to the World, built on Morph blockchain. 
-               Building trust, preserving culture, creating opportunities.
-              </p>
+             
               
               {/* Supported Tokens */}
               <div className="mb-6">
@@ -113,100 +110,14 @@ const Footer: React.FC<FooterProps> = ({ onPageChange }) => {
                 </div>
               </div>
 
-              {/* Social Links */}
-              <div className="flex space-x-4">
-                {socialLinks.map((social, index) => (
-                  <a
-                    key={index}
-                    href={social.href}
-                    target={social.external ? "_blank" : undefined}
-                    rel={social.external ? "noopener noreferrer" : undefined}
-                    className="w-10 h-10 bg-gray-800 hover:bg-gradient-to-r hover:from-green-500 hover:to-blue-600 rounded-lg flex items-center justify-center transition-all duration-300 group"
-                    aria-label={social.label}
-                  >
-                    <social.icon className="w-5 h-5 text-gray-400 group-hover:text-white transition-colors duration-300" />
-                  </a>
-                ))}
-              </div>
+             
             </div>
 
             {/* Platform Links */}
-            <div>
-              <h3 className="text-lg font-semibold mb-6">Platform</h3>
-              <ul className="space-y-3">
-                {footerLinks.platform.map((link, index) => (
-                  <li key={index}>
-                    <button
-                      onClick={() => handleLinkClick(link)}
-                      className="text-gray-400 hover:text-white transition-colors duration-200 flex items-center group w-full text-left"
-                    >
-                      {link.name}
-                      <ExternalLink className="w-3 h-3 ml-1 opacity-0 group-hover:opacity-100 transition-opacity duration-200" />
-                    </button>
-                  </li>
-                ))}
-              </ul>
-            </div>
+         
 
             {/* Resources Links */}
-            <div>
-              <h3 className="text-lg font-semibold mb-6">Resources</h3>
-              <ul className="space-y-3">
-                {footerLinks.resources.map((link, index) => (
-                  <li key={index}>
-                    <a
-                      href={link.href}
-                      target={link.external ? "_blank" : undefined}
-                      rel={link.external ? "noopener noreferrer" : undefined}
-                      className="text-gray-400 hover:text-white transition-colors duration-200 flex items-center group"
-                    >
-                      {link.name}
-                      <ExternalLink className="w-3 h-3 ml-1 opacity-0 group-hover:opacity-100 transition-opacity duration-200" />
-                    </a>
-                  </li>
-                ))}
-              </ul>
-            </div>
-
-            {/* Company Links */}
-            <div>
-              <h3 className="text-lg font-semibold mb-6">Company</h3>
-              <ul className="space-y-3">
-                {footerLinks.company.map((link, index) => (
-                  <li key={index}>
-                    <a
-                      href={link.href}
-                      target={link.external ? "_blank" : undefined}
-                      rel={link.external ? "noopener noreferrer" : undefined}
-                      className="text-gray-400 hover:text-white transition-colors duration-200 flex items-center group"
-                    >
-                      {link.name}
-                      <ExternalLink className="w-3 h-3 ml-1 opacity-0 group-hover:opacity-100 transition-opacity duration-200" />
-                    </a>
-                  </li>
-                ))}
-              </ul>
-            </div>
-
-            {/* Legal Links */}
-            <div>
-              <h3 className="text-lg font-semibold mb-6">Legal</h3>
-              <ul className="space-y-3">
-                {footerLinks.legal.map((link, index) => (
-                  <li key={index}>
-                    <a
-                      href={link.href}
-                      target={link.external ? "_blank" : undefined}
-                      rel={link.external ? "noopener noreferrer" : undefined}
-                      className="text-gray-400 hover:text-white transition-colors duration-200 flex items-center group"
-                    >
-                      {link.name}
-                      <ExternalLink className="w-3 h-3 ml-1 opacity-0 group-hover:opacity-100 transition-opacity duration-200" />
-                    </a>
-                  </li>
-                ))}
-              </ul>
-            </div>
+           
           </div>
         </div>
 
@@ -220,7 +131,7 @@ const Footer: React.FC<FooterProps> = ({ onPageChange }) => {
                 </p>
                 <div className="flex items-center space-x-2 text-xs text-gray-500">
                   <span>Built on</span>
-                  <span className="text-blue-400 font-medium">Blockchain</span>
+                  <span className="text-blue-400 font-medium">Mantle</span>
                   <span>•</span>
                   <span>Secured by</span>
                   <span className="text-green-400 font-medium">Smart Contracts</span>
@@ -230,7 +141,7 @@ const Footer: React.FC<FooterProps> = ({ onPageChange }) => {
               <div className="flex items-center space-x-4">
                 <div className="flex items-center space-x-2 text-sm text-gray-400">
                   <Shield className="h-4 w-4 text-green-400" />
-                  <span>Blockchain Secured</span>
+                  <span>Mantle Secured</span>
                 </div>
                 <div className="flex items-center space-x-2 text-sm text-gray-400">
                   <BookOpen className="h-4 w-4 text-blue-400" />

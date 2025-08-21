@@ -10,6 +10,7 @@ import { MERCHANT_CORE_ABI } from '@/lib/ABI/Merchant_Core_ABI.ts';
 import { Merchant_Registry_ABI } from '@/lib/ABI/Merchant_Registry_ABI.ts';
 import { Installment_ABI } from '@/lib/ABI/Installment_ABI.ts';
 import { Product_ABI } from '@/lib/ABI/Product_ABI.ts';
+import { MultiCurrencySaving_ABI } from '@/lib/ABI/MultiCurrencySaving_ABI.ts';
 import tokens from '@/lib/Tokens/tokens.ts';
 
 // Import or define the Token type
@@ -21,6 +22,8 @@ export const CONTRACT_ADDRESSES = {
   priceFeedAddress: '0x6a257B0a406eB762C105130314dB15B1a29AbC4e',
   afriStableAddress: '0x6615c93A524E2B2daa36276Ac418D3cB60d2DC60',
   savingAddress: '0xC0c182d9895882C61C1fC1DF20F858e5E29a4f71',
+  multiCurrencySaving: '0x63e5A563F9b4009cbf61EDFcc85f883dbd1b833A',
+ // savingAddress: '0x826b82966e575446d0E66608fbB7dCbeF6eb17ba',
   merchantCoreInstallmentAddress:'0xD182cBE8f2C03d230fcc578811CAf591BFB24e99',
   MERCHANT_REGISTRY: '0xE29f69cCeC803F9089A0358d2e3B47118323104d',
 INSTALLMENT_MANAGER: '0x3d19CE4dd54f5CBc54CFf6bc0B4430Ce6Fd00bE3',
@@ -46,6 +49,7 @@ interface ContractInstancesContextType {
   TEST_TOKEN_CONTRACT_INSTANCE: (tokenAddress: string) => Promise<ethers.Contract | null>;
   PRICEAPI_CONTRACT_INSTANCE: () => Promise<ethers.Contract | null>;
   SAVING_CONTRACT_INSTANCE: () => Promise<ethers.Contract | null>;
+  MULTICURRENCY_SAVING_CONTRACT_INSTANCE: () => Promise<ethers.Contract | null>;
   MERCHANT_CORE_CONTRACT_INSTANCE: () => Promise<ethers.Contract | null>;
   MERCHANT_REGISTRY_CONTRACT_INSTANCE: () => Promise<ethers.Contract | null>;
  INSTALLMENT_CONTRACT_INSTANCE: () => Promise<ethers.Contract | null>;
@@ -445,7 +449,17 @@ export const ContractInstanceProvider: React.FC<{ children: ReactNode }> = ({ ch
     return new ethers.Contract(CONTRACT_ADDRESSES.afriStableAddress, AfriStable_ABI, signerOrProvider);
   };
 
-  const SAVING_CONTRACT_INSTANCE = async (): Promise<ethers.Contract | null> => {
+  const MULTICURRENCY_SAVING_CONTRACT_INSTANCE = async (): Promise<ethers.Contract | null> => {
+    if (!provider || !isConnected || !isCorrectNetwork) {
+      console.warn('Provider not available, wallet not connected, or wrong network.');
+      return null;
+    }
+    
+    const signerOrProvider = signer || provider;
+    return new ethers.Contract(CONTRACT_ADDRESSES.multiCurrencySaving, MultiCurrencySaving_ABI, signerOrProvider);
+  };
+
+    const SAVING_CONTRACT_INSTANCE = async (): Promise<ethers.Contract | null> => {
     if (!provider || !isConnected || !isCorrectNetwork) {
       console.warn('Provider not available, wallet not connected, or wrong network.');
       return null;
@@ -454,6 +468,7 @@ export const ContractInstanceProvider: React.FC<{ children: ReactNode }> = ({ ch
     const signerOrProvider = signer || provider;
     return new ethers.Contract(CONTRACT_ADDRESSES.savingAddress, Saving_ABI, signerOrProvider);
   };
+
 
    const MERCHANT_CORE_CONTRACT_INSTANCE = async (): Promise<ethers.Contract | null> => {
     if (!provider || !isConnected || !isCorrectNetwork) {
@@ -555,6 +570,7 @@ export const ContractInstanceProvider: React.FC<{ children: ReactNode }> = ({ ch
     MERCHANT_REGISTRY_CONTRACT_INSTANCE,
     PRODUCT_CONTRACT_INSTANCE,
     INSTALLMENT_CONTRACT_INSTANCE,
+    MULTICURRENCY_SAVING_CONTRACT_INSTANCE ,
     signer,
     provider,
     address,

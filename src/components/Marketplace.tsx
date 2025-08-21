@@ -1,4 +1,5 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import { ethers, formatEther, parseEther } from 'ethers';
 import { 
   Smartphone, 
   ShoppingBag, 
@@ -16,15 +17,41 @@ import {
   Eye,
   Package,
   MoreVertical,
-  Search
+  Search,
+  CheckCircle,
+  AlertCircle,
+  Heart,
+  X,
+  ChevronDown,
+  Upload,
+  Clock
 } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 
+import tokens from '@/lib/Tokens/tokens';
+import { CONTRACT_ADDRESSES, useContractInstances } from '@/provider/ContractInstanceProvider';
+
 const Marketplace = () => {
+  const { isConnected, TEST_TOKEN_CONTRACT_INSTANCE, MERCHANT_REGISTRY_CONTRACT_INSTANCE, PRODUCT_CONTRACT_INSTANCE, INSTALLMENT_CONTRACT_INSTANCE, fetchBalance, address, MERCHANT_CORE_CONTRACT_INSTANCE } = useContractInstances();
+  
   const [showInstallmentsOnly, setShowInstallmentsOnly] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('all');
+  const [loading, setLoading] = useState(false);
+  const [notification, setNotification] = useState(null);
+  const [approving, setApproving] = useState(false);
+
+  // State for products and purchase
+  const [products, setProducts] = useState([]);
+  const [purchaseForm, setPurchaseForm] = useState({
+    productId: '',
+    paymentToken: 'USDC',
+    quantity: 1,
+    isInstallment: false,
+    downPayment: '',
+    numberOfInstallments: 6
+  });
 
   // Custom CSS for infinite scroll animation
   React.useEffect(() => {
@@ -48,83 +75,8 @@ const Marketplace = () => {
     };
   }, []);
 
-  // Sample product data with essential information only
-  const products = [
-    {
-      id: 1,
-      name: "iPhone 15 Pro",
-      category: "Electronics",
-      price: 450000,
-      stock: 15,
-      sales: 8,
-      allowInstallments: true,
-      status: 'active',
-      image: "https://images.unsplash.com/photo-1592750475338-74b7b21085ab?w=400&h=400&fit=crop"
-    },
-    {
-      id: 2,
-      name: "Galaxy S22 Ultra",
-      category: "Electronics",
-      price: 89999,
-      stock: 12,
-      sales: 15,
-      allowInstallments: true,
-      status: 'active',
-      image: "https://images.unsplash.com/photo-1610945265064-0e34e5519bbf?w=400&h=400&fit=crop"
-    },
-    {
-      id: 3,
-      name: "MacBook Air M2",
-      category: "Electronics",
-      price: 850000,
-      stock: 8,
-      sales: 22,
-      allowInstallments: true,
-      status: 'active',
-      image: "https://images.unsplash.com/photo-1517336714731-489689fd1ca8?w=400&h=400&fit=crop"
-    },
-    {
-      id: 4,
-      name: "Samsung 4K TV",
-      category: "Electronics",
-      price: 320000,
-      stock: 20,
-      sales: 5,
-      allowInstallments: true,
-      status: 'active',
-      image: "https://images.unsplash.com/photo-1593359677879-a4bb92f829d1?w=400&h=400&fit=crop"
-    },
-    {
-      id: 5,
-      name: "AirPods Pro",
-      category: "Electronics",
-      price: 89000,
-      stock: 35,
-      sales: 18,
-      allowInstallments: false,
-      status: 'active',
-      image: "https://images.unsplash.com/photo-1606220945770-b5b6c2c55bf1?w=400&h=400&fit=crop"
-    },
-    {
-      id: 6,
-      name: "iPad Air",
-      category: "Electronics",
-      price: 280000,
-      stock: 18,
-      sales: 12,
-      allowInstallments: true,
-      status: 'active',
-      image: "https://images.unsplash.com/photo-1544244015-0df4b3ffc6b0?w=400&h=400&fit=crop"
-    }
-  ];
-
-  // Filter products based on installment preference and search
-  const filteredProducts = products.filter(product => {
-    const matchesSearch = product.name.toLowerCase().includes(searchTerm.toLowerCase());
-    const matchesCategory = selectedCategory === 'all' || product.category === selectedCategory;
-    const matchesInstallment = !showInstallmentsOnly || product.allowInstallments;
-    return matchesSearch && matchesCategory && matchesInstallment;
-  });
+  // Filter out the first token as requested
+  const availableTokens = tokens.slice(1);
 
   const categories = [
     "all",
@@ -148,8 +100,166 @@ const Marketplace = () => {
   // Duplicate brands for infinite scroll effect
   const infiniteBrands = [...brands, ...brands, ...brands];
 
+  // Load products from smart contract when connected
+  useEffect(() => {
+    if (isConnected) {
+      fetchProducts();
+    }
+  }, [isConnected]);
+
+  const showNotification = (message, type = 'success') => {
+    setNotification({ message, type });
+    setTimeout(() => setNotification(null), 5000);
+  };
+
+  // Token approval function
+  const approveToken = async (tokenAddress, spenderAddress, amount) => {
+    setApproving(true);
+    try {
+      const tokenContract = await TEST_TOKEN_CONTRACT_INSTANCE(tokenAddress);
+      const tx = await tokenContract.approve(spenderAddress, amount);
+      await tx.wait();
+      showNotification('Token approved successfully!');
+      return true;
+    } catch (error) {
+      console.error('Token approval error:', error);
+      showNotification('Token approval failed: ' + error.message, 'error');
+      return false;
+    } finally {
+      setApproving(false);
+    }
+  };
+
+  // Fetch products from smart contract
+  const fetchProducts = async () => {
+    try {
+      const contract = await MERCHANT_CORE_CONTRACT_INSTANCE();
+      const allProducts = await contract.getAllProducts();
+      setProducts(allProducts);
+    } catch (error) {
+      console.error('Error fetching products:', error);
+      showNotification('Error fetching products: ' + error.message, 'error');
+    }
+  };
+
+  // Handle product purchase
+  const handlePurchaseProduct = async (productId) => {
+    console.log(`Attempting to purchase product with ID: ${productId}`);
+
+    const product = products[productId];
+    if (!product) {
+      console.error('Product not found in the products array');
+      showNotification('Product not found', 'error');
+      return;
+    }
+    console.log('Product found:', product);
+
+    const selectedToken = availableTokens.find(t => t.symbol === purchaseForm.paymentToken);
+    if (!selectedToken) {
+      console.error('Selected payment token not found in available tokens');
+      showNotification('Invalid payment token selected', 'error');
+      return;
+    }
+    console.log('Selected token:', selectedToken);
+
+    // Check if the selected token is accepted by the product
+    const isTokenAccepted = product.acceptedTokens?.includes(selectedToken.address);
+    if (!isTokenAccepted) {
+      console.error('Selected token is not accepted by the product');
+      showNotification('This payment token is not accepted for this product', 'error');
+      return;
+    }
+    console.log('Token is accepted by the product');
+
+    setLoading(true);
+    try {
+      const contract = await MERCHANT_CORE_CONTRACT_INSTANCE();
+      console.log('Contract instance obtained:', contract);
+
+      console.log('Product price:', product.price);
+      console.log('Purchase quantity:', purchaseForm.quantity);
+      
+      // Convert purchaseForm.quantity to BigInt before multiplication
+      const totalAmount = product.price * BigInt(purchaseForm.quantity);
+      console.log('Total amount in Wei:', totalAmount);
+      
+      // Convert to Wei if needed (assuming price is in token units)
+      const amountToApprove = totalAmount.toString();
+      console.log('Amount to approve:', amountToApprove);
+      
+      // First approve the token
+      const approved = await approveToken(
+        selectedToken.address,
+        CONTRACT_ADDRESSES.merchantCoreInstallmentAddress,
+        amountToApprove
+      );
+      console.log('Token approval result:', approved);
+      
+      if (!approved) {
+        console.error('Token approval failed');
+        setLoading(false);
+        return;
+      }
+
+      let tx;
+      
+      if (purchaseForm.isInstallment) {
+        console.log('Purchasing with installments');
+        tx = await contract.purchaseProductWithInstallments(
+          productId + 1,
+          selectedToken.address,
+          purchaseForm.quantity,
+          purchaseForm.downPayment,
+          purchaseForm.numberOfInstallments
+        );
+      } else {
+        console.log('Purchasing without installments');
+        tx = await contract.purchaseProduct(
+          productId + 1,
+          selectedToken.address,
+          purchaseForm.quantity
+        );
+      }
+      
+      console.log('Transaction sent:', tx);
+      await tx.wait();
+      console.log('Transaction confirmed:', tx);
+
+      showNotification('Product purchased successfully!');
+      fetchProducts();
+    } catch (error) {
+      console.error('Error purchasing product:', error);
+      showNotification('Error purchasing product: ' + error.message, 'error');
+    }
+    setLoading(false);
+  };
+
+  // Filter products based on installment preference and search
+  const filteredProducts = products.filter(product => {
+    const matchesSearch = product.name?.toLowerCase().includes(searchTerm.toLowerCase());
+    const matchesCategory = selectedCategory === 'all' || product.category === selectedCategory;
+    const matchesInstallment = !showInstallmentsOnly || product.allowInstallments;
+    return matchesSearch && matchesCategory && matchesInstallment;
+  });
+
   return (
     <div className="min-h-screen bg-gray-50">
+      {/* Notification */}
+      {notification && (
+        <div className={`fixed top-4 right-4 p-4 rounded-lg shadow-lg z-50 ${
+          notification.type === 'success' ? 'bg-green-50 border border-green-200 text-green-800' : 
+          'bg-red-50 border border-red-200 text-red-800'
+        }`}>
+          <div className="flex items-center gap-2">
+            {notification.type === 'success' ? 
+              <CheckCircle className="w-4 h-4" /> : 
+              <AlertCircle className="w-4 h-4" />
+            }
+            {notification.message}
+          </div>
+        </div>
+      )}
+
       {/* Hero Section */}
       <div className="relative bg-blue-900 text-white">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
@@ -162,6 +272,23 @@ const Marketplace = () => {
                 Discover amazing deals on smartphones, electronics, and daily essentials. 
                 Shop smart, save more with our exclusive offers and installment plans.
               </p>
+              
+              {/* Connection Status */}
+              <div className="mb-4">
+                {isConnected ? (
+                  <div className="flex items-center gap-2 bg-green-600 bg-opacity-20 border border-green-400 px-4 py-2 rounded-lg inline-flex">
+                    <CheckCircle className="w-4 h-4 text-green-300" />
+                    <span className="text-green-100 text-sm">Wallet Connected</span>
+                    <span className="text-green-300 text-sm">{address?.slice(0, 6)}...{address?.slice(-4)}</span>
+                  </div>
+                ) : (
+                  <div className="flex items-center gap-2 bg-red-600 bg-opacity-20 border border-red-400 px-4 py-2 rounded-lg inline-flex">
+                    <AlertCircle className="w-4 h-4 text-red-300" />
+                    <span className="text-red-100 text-sm">Please connect your wallet to shop</span>
+                  </div>
+                )}
+              </div>
+              
               <button className="bg-gradient-to-r from-yellow-400 to-orange-400 text-gray-900 px-8 py-3 rounded-lg font-semibold hover:from-yellow-300 hover:to-orange-300 transition-all duration-300 shadow-lg hover:shadow-xl transform hover:-translate-y-1">
                 Shop Now
               </button>
@@ -218,120 +345,196 @@ const Marketplace = () => {
           </CardContent>
         </Card>
 
-        {/* Products Grid - Merchant Style */}
+        {/* Products Grid - Smart Contract Integrated */}
         <section className="mb-12">
           <div className="flex items-center justify-between mb-6">
-            <h2 className="text-2xl font-bold text-foreground">Products</h2>
+            <h2 className="text-2xl font-bold text-foreground">Products from Smart Contract</h2>
             <span className="text-sm text-muted-foreground">
               Showing {filteredProducts.length} products
             </span>
           </div>
           
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {filteredProducts.map((product) => (
-              <Card key={product.id} className="hover:shadow-lg transition-shadow">
-                <CardContent className="p-0">
-                  {/* Product Image */}
-                  <div className="relative">
-                    <img
-                      src={product.image}
-                      alt={product.name}
-                      className="w-full h-48 object-cover rounded-t-lg"
-                    />
-                    <div className="absolute top-2 right-2 flex gap-1">
-                      <Button size="sm" variant="secondary" className="h-8 w-8 p-0">
-                        <MoreVertical className="h-4 w-4" />
-                      </Button>
-                    </div>
-                    {product.allowInstallments && (
-                      <div className="absolute top-2 left-2">
-                        <span className="bg-green-500 text-white text-xs px-2 py-1 rounded-full">
-                          Installments
-                        </span>
+            {filteredProducts.length > 0 ? filteredProducts.map((product, index) => {
+              const acceptedTokensInfo = product.acceptedTokens?.map(addr => 
+                availableTokens.find(t => t.address === addr)
+              ).filter(Boolean) || [];
+
+              return (
+                <Card key={index} className="hover:shadow-lg transition-shadow">
+                  <CardContent className="p-0">
+                    {/* Product Image */}
+                    <div className="relative">
+                      <div className="aspect-square bg-gray-100 rounded-t-lg flex items-center justify-center">
+                        {product.imageUrl ? (
+                          <img
+                            src={product.imageUrl}
+                            alt={product.name}
+                            className="w-full h-full object-cover rounded-t-lg"
+                            onError={(e) => {
+                              const img = e.target as HTMLImageElement;
+                              img.style.display = 'none';
+                              const parent = img.parentNode as HTMLElement;
+                              if (parent) {
+                                parent.innerHTML = '<div class="w-12 h-12 text-gray-400"><svg class="w-12 h-12" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M4 3a2 2 0 00-2 2v10a2 2 0 002 2h12a2 2 0 002-2V5a2 2 0 00-2-2H4zm12 12H4l4-8 3 6 2-4 3 6z" clip-rule="evenodd"></path></svg></div>';
+                              }
+                            }}
+                          />
+                        ) : (
+                          <Package className="w-12 h-12 text-gray-400" />
+                        )}
                       </div>
-                    )}
-                  </div>
-
-                  {/* Product Info */}
-                  <div className="p-4">
-                    <div className="flex items-start justify-between mb-2">
-                      <h3 className="font-semibold text-foreground">{product.name}</h3>
-                      <span className={`text-xs px-2 py-1 rounded-full ${
-                        product.status === 'active' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
-                      }`}>
-                        {product.status}
-                      </span>
-                    </div>
-                    
-                    <p className="text-sm text-muted-foreground mb-2">{product.category}</p>
-                    
-                    <div className="flex items-center justify-between mb-3">
-                      <span className="text-lg font-bold text-foreground">₦{product.price.toLocaleString()}</span>
-                      <span className="text-sm text-muted-foreground">Stock: {product.stock}</span>
-                    </div>
-
-                    <div className="flex items-center justify-between mb-4">
-                      <span className="text-sm text-muted-foreground">Sales: {product.sales}</span>
-                      <span className="text-sm text-muted-foreground">
-                        {product.allowInstallments ? 'Installments Available' : 'Full Payment Only'}
-                      </span>
-                    </div>
-
-                    {/* Token Support */}
-                    <div className="mb-4">
-                      <p className="text-xs text-muted-foreground mb-2">Accepted tokens:</p>
-                      <div className="flex gap-2">
-                        <span className="inline-flex items-center px-2 py-1 rounded-md text-xs font-medium bg-blue-100 text-blue-800">
-                          cNGN
-                        </span>
-                        <span className="inline-flex items-center px-2 py-1 rounded-md text-xs font-medium bg-green-100 text-green-800">
-                          USDT
-                        </span>
-                        <span className="inline-flex items-center px-2 py-1 rounded-md text-xs font-medium bg-purple-100 text-purple-800">
-                          ETH
-                        </span>
+                      <div className="absolute top-2 right-2 flex gap-1">
+                        <Button size="sm" variant="secondary" className="h-8 w-8 p-0">
+                          <MoreVertical className="h-4 w-4" />
+                        </Button>
                       </div>
-                    </div>
-
-                    {/* Action Buttons */}
-                    <div className="flex gap-2">
-                      <Button variant="outline" size="sm" className="flex-1">
-                        <ShoppingBag className="h-4 w-4 mr-2" />
-                        Buy Full
-                      </Button>
-                      {product.allowInstallments ? (
-                        <Button variant="outline" size="sm" className="flex-1">
-                          <CreditCard className="h-4 w-4 mr-2" />
-                          Buy Installment
-                        </Button>
-                      ) : (
-                        <Button variant="outline" size="sm" className="flex-1" disabled>
-                          <CreditCard className="h-4 w-4 mr-2" />
-                          No Installments
-                        </Button>
+                      {product.allowInstallments && (
+                        <div className="absolute top-2 left-2">
+                          <span className="bg-green-500 text-white text-xs px-2 py-1 rounded-full">
+                            Installments
+                          </span>
+                        </div>
                       )}
                     </div>
-                  </div>
-                </CardContent>
-              </Card>
-            ))}
-          </div>
 
-          {/* Empty State */}
-          {filteredProducts.length === 0 && (
-            <Card>
-              <CardContent className="text-center py-12">
-                <Package className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
+                    {/* Product Info */}
+                    <div className="p-4">
+                      <div className="flex items-start justify-between mb-2">
+                        <h3 className="font-semibold text-foreground">{product.name || 'Product Name'}</h3>
+                        <span className="text-xs px-2 py-1 rounded-full bg-green-100 text-green-800">
+                          Active
+                        </span>
+                      </div>
+                      
+                      <p className="text-sm text-muted-foreground mb-2">{product.category || 'Electronics'}</p>
+                      <p className="text-sm text-muted-foreground mb-3 line-clamp-2">{product.description || 'High-quality product with excellent features.'}</p>
+                      
+                      <div className="flex items-center justify-between mb-3">
+                        <span className="text-lg font-bold text-foreground">
+                          ${product.price ? formatEther(product.price) : '0.00'}
+                        </span>
+                        <span className="text-sm text-muted-foreground">Stock: {product.stock || 'N/A'}</span>
+                      </div>
+
+                      {/* Accepted Tokens Display */}
+                      {acceptedTokensInfo.length > 0 && (
+                        <div className="mb-4">
+                          <p className="text-xs text-muted-foreground mb-2">Accepted tokens:</p>
+                          <div className="flex gap-2">
+                            {acceptedTokensInfo.slice(0, 3).map((token, idx) => (
+                              <span key={idx} className="inline-flex items-center px-2 py-1 rounded-md text-xs font-medium bg-blue-100 text-blue-800">
+                                <img src={token.img} alt={token.symbol} className="w-3 h-3 rounded-full mr-1" />
+                                {token.symbol}
+                              </span>
+                            ))}
+                            {acceptedTokensInfo.length > 3 && (
+                              <span className="inline-flex items-center px-2 py-1 rounded-md text-xs font-medium bg-gray-100 text-gray-800">
+                                +{acceptedTokensInfo.length - 3}
+                              </span>
+                            )}
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Purchase Controls */}
+                      {isConnected && acceptedTokensInfo.length > 0 && (
+                        <div className="space-y-3 mb-4">
+                          <select
+                            value={purchaseForm.paymentToken}
+                            onChange={(e) => setPurchaseForm({...purchaseForm, paymentToken: e.target.value})}
+                            className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm"
+                          >
+                            {acceptedTokensInfo.map((token) => (
+                              <option key={token.address} value={token.symbol}>
+                                Pay with {token.symbol}
+                              </option>
+                            ))}
+                          </select>
+                          
+                          <input
+                            type="number"
+                            min="1"
+                            value={purchaseForm.quantity}
+                            onChange={(e) => setPurchaseForm({...purchaseForm, quantity: parseInt(e.target.value) || 1})}
+                            placeholder="Quantity"
+                            className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm"
+                          />
+
+                          {product.allowInstallments && (
+                            <div className="flex items-center gap-2">
+                              <input
+                                type="checkbox"
+                                checked={purchaseForm.isInstallment}
+                                onChange={(e) => setPurchaseForm({...purchaseForm, isInstallment: e.target.checked})}
+                                className="w-4 h-4 text-blue-600 border-gray-300 rounded"
+                              />
+                              <span className="text-sm">Pay in Installments</span>
+                            </div>
+                          )}
+
+                          {purchaseForm.isInstallment && (
+                            <input
+                              type="number"
+                              min="1"
+                              max="24"
+                              value={purchaseForm.numberOfInstallments}
+                              onChange={(e) => setPurchaseForm({...purchaseForm, numberOfInstallments: parseInt(e.target.value) || 6})}
+                              placeholder="Number of installments"
+                              className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm"
+                            />
+                          )}
+                        </div>
+                      )}
+
+                      {/* Action Buttons */}
+                      <div className="flex gap-2">
+                        {isConnected ? (
+                          acceptedTokensInfo.length > 0 ? (
+                            <Button 
+                              size="sm" 
+                              className="flex-1"
+                              onClick={() => handlePurchaseProduct(index)}
+                              disabled={loading || approving}
+                            >
+                              <ShoppingBag className="h-4 w-4 mr-2" />
+                              {loading || approving ? 'Processing...' : (purchaseForm.isInstallment ? 'Buy Installment' : 'Buy Full')}
+                            </Button>
+                          ) : (
+                            <Button variant="outline" size="sm" className="flex-1" disabled>
+                              <AlertCircle className="h-4 w-4 mr-2" />
+                              No Payment Tokens
+                            </Button>
+                          )
+                        ) : (
+                          <Button variant="outline" size="sm" className="flex-1" disabled>
+                            <AlertCircle className="h-4 w-4 mr-2" />
+                            Connect Wallet
+                          </Button>
+                        )}
+                        <Button variant="outline" size="sm" className="px-3">
+                          <Heart className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              );
+            }) : (
+              <div className="col-span-full text-center py-12">
+                <Package className="w-16 h-16 text-gray-300 mx-auto mb-4" />
                 <h3 className="text-lg font-semibold mb-2">No products found</h3>
-                <p className="text-muted-foreground mb-4">
-                  {searchTerm || selectedCategory !== 'all' || showInstallmentsOnly
+                <p className="text-gray-500 mb-4">
+                  {!isConnected 
+                    ? 'Please connect your wallet to view products'
+                    : searchTerm || selectedCategory !== 'all' || showInstallmentsOnly
                     ? 'Try adjusting your search or filter criteria'
                     : 'No products available at the moment'
                   }
                 </p>
-              </CardContent>
-            </Card>
-          )}
+              </div>
+            )}
+          </div>
         </section>
 
         {/* Electronics Brands Section */}

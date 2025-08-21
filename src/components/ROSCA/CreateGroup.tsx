@@ -12,20 +12,26 @@ import { useToast } from '@/hooks/use-toast';
 import { useContractInstances } from '@/provider/ContractInstanceProvider';
 import { ethers } from 'ethers';
 import { Saving_ABI } from '@/lib/ABI/Saving_ABI';
+import tokens from '@/lib/Tokens/tokens';
 
 const CreateGroup = () => {
   const { toast } = useToast();
-  const { SAVING_CONTRACT_INSTANCE, TEST_TOKEN_CONTRACT_INSTANCE } = useContractInstances();
-  
-  const [formData, setFormData] = useState({
-    groupName: '',
-    description: '',
-    contributionAmount: '',
-    frequency: '',
-    maxMembers: '',
-    tokenType: 'USDT', // Default token
-    duration: ''
-  });
+  const { SAVING_CONTRACT_INSTANCE, TEST_TOKEN_CONTRACT_INSTANCE,    MULTICURRENCY_SAVING_CONTRACT_INSTANCE } = useContractInstances();
+
+  // Token options for the group - using valid testnet addresses
+  const getSupportedTokens = () => {
+    return tokens.filter(token => token.id > 1);
+  };
+
+const [formData, setFormData] = useState({
+  groupName: '',
+  description: '',
+  contributionAmount: '',
+  frequency: '',
+  maxMembers: '',
+  tokenType: getSupportedTokens()[0]?.address || '', // Use address instead of symbol
+  duration: ''
+});
 
   const [inviteCode, setInviteCode] = useState('');
   const [inviteCodeGenerationFailed, setInviteCodeGenerationFailed] = useState(false);
@@ -49,13 +55,7 @@ const CreateGroup = () => {
     { value: '2592000', label: 'Monthly', seconds: 2592000 },
   ];
 
-  // Token options for the group - using valid testnet addresses
-  const tokenOptions = [
-    { value: 'USDT', label: 'USDT (Tether)', symbol: 'USDT', address: '0x6765e788d5652E22691C6c3385c401a9294B9375' },
-    { value: 'USDC', label: 'USDC (USD Coin)', symbol: 'USDC', address: '0x6765e788d5652E22691C6c3385c401a9294B9375' }, // Using same address for now
-    { value: 'DAI', label: 'DAI (Dai Stablecoin)', symbol: 'DAI', address: '0x6765e788d5652E22691C6c3385c401a9294B9375' }, // Using same address for now
-    { value: 'NIGERIA_NGN', label: 'Nigeria Naira (₦)', symbol: '₦', address: '0x0000000000000000000000000000000000000000' },
-  ];
+
 
   // Convert token amount to Wei
   const toWei = (amount: string, decimals = 18) => {
@@ -72,274 +72,175 @@ const CreateGroup = () => {
     return `${groupHash}-${timestamp}`;
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    
-    if (!formData.groupName || !formData.contributionAmount || !formData.frequency || !formData.maxMembers || !formData.tokenType) {
+const handleSubmit = async (e: React.FormEvent) => {
+  e.preventDefault();
+
+  if (
+    !formData.groupName ||
+    !formData.contributionAmount ||
+    !formData.frequency ||
+    !formData.maxMembers ||
+    !formData.tokenType
+  ) {
+    toast({
+      title: "Missing Information",
+      description: "Please fill in all required fields including token selection.",
+      variant: "destructive",
+    });
+    return;
+  }
+
+  setIsCreating(true);
+
+  try {
+    console.log("Form data:", formData);
+
+    const Saving_Contract = await SAVING_CONTRACT_INSTANCE();
+    if (!Saving_Contract) {
+      throw new Error("Smart contract not initialized");
+    }
+
+    console.log("Smart contract instance:", Saving_Contract);
+    console.log("Contract address:", await Saving_Contract.getAddress());
+
+    // Convert values to proper format
+    const contributionInWei = toWei(formData.contributionAmount);
+    const frequencySeconds = parseInt(formData.frequency);
+    const maxMembers = parseInt(formData.maxMembers);
+
+    console.log("Converted values:", {
+      contributionInWei,
+      frequencySeconds,
+      maxMembers,
+    });
+
+    // Get the selected token address
+    const selectedToken = getSupportedTokens().find(
+      (t) => t.address === formData.tokenType
+    );
+    if (!selectedToken) {
       toast({
-        title: "Missing Information",
-        description: "Please fill in all required fields including token selection.",
+        title: "Token Error",
+        description: "Please select a valid token",
         variant: "destructive",
       });
       return;
     }
 
-    setIsCreating(true);
-    
+    const tokenAddress = selectedToken.address;
+    console.log("Selected token:", selectedToken, "Address:", tokenAddress);
+
+    if (!tokenAddress || !tokenAddress.startsWith("0x") || tokenAddress.length !== 42) {
+      throw new Error(`Invalid token address: ${tokenAddress}`);
+    }
+    if (!/^0x[a-fA-F0-9]{40}$/.test(tokenAddress)) {
+      throw new Error(`Invalid token address format: ${tokenAddress}`);
+    }
+    if (tokenAddress === "0x0000000000000000000000000000000000000000") {
+      console.log("Using zero address for Naira token");
+    }
+
+    // Create group on smart contract
+    console.log("Creating group with params:", {
+      name: formData.groupName,
+      description: formData.description || `${formData.groupName} - A savings group`,
+      tokenAddress,
+      contributionInWei,
+      frequencySeconds,
+      maxMembers,
+    });
+
+    let tx;
     try {
-      console.log('Form data:', formData);
-      
-      const Saving_Contract = await SAVING_CONTRACT_INSTANCE();
-      if (!Saving_Contract) {
-        throw new Error('Smart contract not initialized');
-      }
-      
-      console.log('Smart contract instance:', Saving_Contract);
-      console.log('Contract address:', await Saving_Contract.getAddress());
-      
-      // Convert values to proper format
-      const contributionInWei = toWei(formData.contributionAmount);
-      const frequencySeconds = parseInt(formData.frequency);
-      const maxMembers = parseInt(formData.maxMembers);
-      
-      console.log('Converted values:', { contributionInWei, frequencySeconds, maxMembers });
-      
-      // Get the selected token address
-      const selectedToken = tokenOptions.find(t => t.value === formData.tokenType);
-      if (!selectedToken) {
-        toast({
-          title: "Token Error",
-          description: "Please select a valid token",
-          variant: "destructive",
-        });
-        return;
-      }
-      
-      const tokenAddress = selectedToken.address;
-      console.log('Selected token:', selectedToken, 'Address:', tokenAddress);
-      
-      // Validate token address format and ensure it's not an ENS name
-      if (!tokenAddress || !tokenAddress.startsWith('0x') || tokenAddress.length !== 42) {
-        throw new Error(`Invalid token address: ${tokenAddress}`);
-      }
-      
-      // Additional check to ensure it's a valid hex address (not ENS)
-      if (!/^0x[a-fA-F0-9]{40}$/.test(tokenAddress)) {
-        throw new Error(`Invalid token address format: ${tokenAddress}`);
-      }
-      
-      // Check if it's the zero address (for Naira)
-      if (tokenAddress === '0x0000000000000000000000000000000000000000') {
-        console.log('Using zero address for Naira token');
-      }
-      
-      // Create group on smart contract
-      console.log('Creating group with params:', {
-        name: formData.groupName,
-        description: formData.description || `${formData.groupName} - A savings group`,
+      tx = await Saving_Contract.createGroup(
+        formData.groupName,
+        formData.description || `${formData.groupName} - A savings group`,
         tokenAddress,
         contributionInWei,
         frequencySeconds,
         maxMembers
-      });
-      
-      let tx;
-      try {
-        tx = await Saving_Contract.createGroup(
-          formData.groupName,
-          formData.description || `${formData.groupName} - A savings group`,
-          tokenAddress,
-          contributionInWei,
-          frequencySeconds,
-          maxMembers
-        );
-        console.log('Transaction created successfully:', tx);
-      } catch (contractError) {
-        console.error('Smart contract call failed:', contractError);
-        throw new Error(`Smart contract error: ${contractError.message || contractError}`);
-      }
-
-      toast({
-        title: "Creating Group... 🔄",
-        description: "Processing your request on the blockchain.",
-        duration: 2000,
-      });
-
-      // Wait for the group creation transaction to be mined
-      const receipt = await tx.wait();
-      console.log('Group creation transaction receipt:', receipt);
-      
-      // Extract group ID from transaction logs or use a counter approach
-      let groupId = 1; // Default fallback
-      
-      // Try to find the group ID from the transaction logs
-      if (receipt.logs && receipt.logs.length > 0) {
-        console.log('Transaction logs:', receipt.logs);
-        
-        // Look for GroupCreated event or similar in the logs
-        // This depends on your smart contract's event structure
-        for (const log of receipt.logs) {
-          try {
-            // Try to decode the log to find group ID
-            console.log('Processing log:', log);
-          } catch (logError) {
-            console.log('Could not decode log:', logError);
-          }
-        }
-      }
-      
-      // Alternative: Get the total number of groups to determine the new group ID
-      try {
-        const totalStats = await Saving_Contract.getTotalStats();
-        groupId = totalStats.totalGroups.toNumber();
-        console.log('Total groups (new group ID):', groupId);
-      } catch (error) {
-        console.log('Could not get total groups, trying getUserGroups...');
-        
-        // Fallback: Get user's groups and find the highest ID
-        try {
-          const userGroups = await Saving_Contract.getUserGroups();
-          if (userGroups && userGroups.length > 0) {
-            // Find the highest group ID
-            const highestId = Math.max(...userGroups.map((g: any) => g.toNumber()));
-            groupId = highestId + 1;
-            console.log('Using user groups fallback, new group ID:', groupId);
-          }
-        } catch (userGroupsError) {
-          console.log('Could not get user groups, using fallback ID:', groupId);
-        }
-      }
-      
-      console.log('Using group ID for invite code generation:', groupId);
-      
-      // Generate invite code using smart contract
-      let generatedInviteCode = '';
-      try {
-        console.log('Generating invite code for group:', groupId);
-        console.log('Max uses: 10, Validity days: 30');
-        
-        const inviteCodeTx = await Saving_Contract.generateInviteCode(
-          groupId,
-          10, // maxUses
-          30  // validityDays
-        );
-        
-        console.log('Invite code generation transaction:', inviteCodeTx);
-        console.log('Transaction hash:', inviteCodeTx.hash);
-        
-        // Wait for the invite code generation transaction
-        const inviteCodeReceipt = await inviteCodeTx.wait();
-        console.log('Invite code generation receipt:', inviteCodeReceipt);
-        console.log('Transaction status:', inviteCodeReceipt.status);
-        console.log('Number of logs:', inviteCodeReceipt.logs.length);
-        
-        // Extract the invite code from the InviteCodeGenerated event
-        try {
-          console.log('Extracting invite code from transaction logs...');
-          
-          // Parse the transaction logs to find the InviteCodeGenerated event
-          const iface = new ethers.Interface(Saving_ABI);
-          
-          for (const log of inviteCodeReceipt.logs) {
-            try {
-              const parsedLog = iface.parseLog(log);
-              console.log('Parsed log:', parsedLog.name, parsedLog.args);
-              if (parsedLog.name === 'InviteCodeGenerated') {
-                generatedInviteCode = parsedLog.args.code;
-                console.log('Found invite code in event logs:', generatedInviteCode);
-                break;
-              }
-            } catch (parseError) {
-              console.log('Could not parse log:', parseError);
-            }
-          }
-          
-          if (!generatedInviteCode) {
-            console.log('No InviteCodeGenerated event found in logs. Available logs:');
-            inviteCodeReceipt.logs.forEach((log, index) => {
-              console.log(`Log ${index}:`, log);
-            });
-            throw new Error('Could not find InviteCodeGenerated event in transaction logs');
-          }
-          
-        } catch (retrieveError) {
-          console.error('Error extracting invite code from logs:', retrieveError);
-          throw new Error('Invite code generated but could not be extracted from logs');
-        }
-        
-        console.log('Invite code generation SUCCESS - generatedInviteCode:', generatedInviteCode);
-        toast({
-          title: "Group Created Successfully! 🎉",
-          description: `${formData.groupName} (ID: ${groupId}) is now ready for members to join. Blockchain invite code: ${generatedInviteCode}`,
-          duration: 5000,
-        });
-        
-      } catch (inviteError) {
-        console.error('Error generating invite code on blockchain:', inviteError);
-        
-        // If blockchain generation fails, show error but don't create fake codes
-        toast({
-          title: "Group Created but Invite Code Failed",
-          description: `${formData.groupName} was created successfully, but invite code generation failed. Please try again or contact support.`,
-          variant: "destructive",
-          duration: 5000,
-        });
-        
-        // Set state for manual generation
-        console.log('Setting manual generation state - Group ID:', groupId);
-        setInviteCode('');
-        setInviteCodeGenerationFailed(true);
-        setGroupIdForManualGeneration(groupId.toString());
-        console.log('Manual generation state set to true');
-        
-        // Show instructions for manual invite code generation
-        toast({
-          title: "Manual Invite Code Required",
-          description: "Your group was created successfully, but invite code generation failed. Use the manual generation button below.",
-          duration: 8000,
-        });
-        
-        // Return early to prevent further execution
-        return;
-      }
-      
-      // Only execute this if invite code generation was successful
-      setInviteCode(generatedInviteCode);
-      setInviteCodeGenerationFailed(false);
-      setGroupIdForManualGeneration('');
-
-      // Reset form but keep invite code and default token
-      setFormData({
-        groupName: '',
-        description: '',
-        contributionAmount: '',
-        frequency: '',
-        maxMembers: '',
-        tokenType: 'USDT', // Keep default token
-        duration: ''
-      });
-      
-    } catch (error) {
-      console.error('Error creating group:', error);
-      
-      let errorMessage = "Failed to create group. Please check your wallet and try again.";
-      if (error instanceof Error) {
-        errorMessage = error.message;
-      } else if (typeof error === 'string') {
-        errorMessage = error;
-      }
-      
-      toast({
-        title: "Creation Failed",
-        description: errorMessage,
-        variant: "destructive",
-        duration: 5000,
-      });
-    } finally {
-      setIsCreating(false);
+      );
+      console.log("Transaction created successfully:", tx);
+    } catch (contractError) {
+      console.error("Smart contract call failed:", contractError);
+      throw new Error(
+        `Smart contract error: ${contractError.message || contractError}`
+      );
     }
-  };
 
+    toast({
+      title: "Creating Group... 🔄",
+      description: "Processing your request on the blockchain.",
+      duration: 2000,
+    });
+
+    // Wait for the group creation transaction to be mined
+    const receipt = await tx.wait();
+    console.log("Group creation transaction receipt:", receipt);
+
+    // Success toast
+    toast({
+      title: "Group Created Successfully! 🎉",
+      description: `${formData.groupName} has been created successfully.`,
+      duration: 5000,
+    });
+
+    // Reset form but keep default token
+    setFormData({
+      groupName: "",
+      description: "",
+      contributionAmount: "",
+      frequency: "",
+      maxMembers: "",
+      tokenType: getSupportedTokens()[0]?.address || "",
+      duration: "",
+    });
+  } catch (error) {
+    console.error("Error creating group:", error);
+
+    let errorMessage =
+      "Failed to create group. Please check your wallet and try again.";
+    if (error instanceof Error) {
+      errorMessage = error.message;
+    } else if (typeof error === "string") {
+      errorMessage = error;
+    }
+
+    toast({
+      title: "Creation Failed",
+      description: errorMessage,
+      variant: "destructive",
+      duration: 5000,
+    });
+  } finally {
+    setIsCreating(false);
+  }
+};
+
+const handleSave = async () => {
+  try {
+    const Saving_Contract = await MULTICURRENCY_SAVING_CONTRACT_INSTANCE();
+    if (!Saving_Contract) {
+      throw new Error("Smart contract not initialized");
+    }
+
+    const wrapperAddress = "0xa9976e9812e680a81c49Dd1D28b9ED88222c9d4e"; // Replace with actual wrapper address
+
+    // Send tx
+    const tx = await Saving_Contract.addTrustedContract(wrapperAddress);
+
+    console.log("Transaction sent:", tx.hash);
+
+    // Wait for confirmation
+    const receipt = await tx.wait();
+    console.log("Transaction confirmed:", receipt);
+
+    alert("Wrapper contract added successfully ✅");
+  } catch (error) {
+    console.error("Error adding trusted contract:", error);
+    alert(`Failed to add trusted contract: ${error.message}`);
+  }
+};
   const handleInputChange = (field: string, value: string) => {
     setFormData(prev => ({ ...prev, [field]: value }));
   };
@@ -693,272 +594,52 @@ const CreateGroup = () => {
               </div>
             </CardHeader>
             <CardContent className="space-y-6">
-              <div className="space-y-3">
-                <Label htmlFor="tokenType" className="text-sm font-semibold text-foreground">
-                  Select Token *
-                </Label>
-                <Select value={formData.tokenType} onValueChange={(value) => handleInputChange('tokenType', value)} required>
-                  <SelectTrigger className="h-12 text-base border border-gray-200 focus:border-primary focus:ring-2 focus:ring-primary/20 transition-all duration-300 bg-white/80 backdrop-blur-sm hover:bg-white">
-                    <SelectValue placeholder="Choose your preferred token" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {tokenOptions.map((token) => (
-                      <SelectItem key={token.value} value={token.value}>
-                        <div className="flex items-center gap-2">
-                          <span className="font-medium">{token.label}</span>
-                          {token.symbol !== '₦' && (
-                            <Badge variant="outline" className="text-xs">
-                              {token.symbol}
-                            </Badge>
-                          )}
-                        </div>
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-                
-                {/* Token Information */}
-                {formData.tokenType && (
-                  <div className="p-4 bg-gray-50 rounded-lg border border-gray-200">
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-2">
-                        <span className="text-sm font-medium text-gray-700">Selected Token:</span>
-                        <Badge variant="secondary" className="bg-blue-100 text-blue-700">
-                          {tokenOptions.find(t => t.value === formData.tokenType)?.label}
-                        </Badge>
-                      </div>
-                      <span className="text-xs text-gray-500">
-                        {tokenOptions.find(t => t.value === formData.tokenType)?.symbol}
-                      </span>
-                    </div>
-                    <p className="text-xs text-gray-600 mt-2">
-                      All contributions and payouts will be processed in this token
-                    </p>
-                  </div>
-                )}
-              </div>
+            <div className="space-y-3">
+  <Label htmlFor="tokenType" className="text-sm font-semibold text-foreground">
+    Select Token *
+  </Label>
+  <Select value={formData.tokenType} onValueChange={(value) => handleInputChange('tokenType', value)} required>
+    <SelectTrigger className="h-12 text-base border border-gray-200 focus:border-primary focus:ring-2 focus:ring-primary/20 transition-all duration-300 bg-white/80 backdrop-blur-sm hover:bg-white">
+      <SelectValue placeholder="Choose your preferred token" />
+    </SelectTrigger>
+    <SelectContent>
+      {getSupportedTokens().map((token) => (
+        <SelectItem key={token.id} value={token.address}>
+          <div className="flex items-center gap-2">
+            <span className="font-medium">{token.name}</span>
+            <Badge variant="outline" className="text-xs">
+              {token.symbol}
+            </Badge>
+          </div>
+        </SelectItem>
+      ))}
+    </SelectContent>
+  </Select>
+  
+  {/* Token Information */}
+  {formData.tokenType && (
+    <div className="p-4 bg-gray-50 rounded-lg border border-gray-200">
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-2">
+          <span className="text-sm font-medium text-gray-700">Selected Token:</span>
+          <Badge variant="secondary" className="bg-blue-100 text-blue-700">
+            {getSupportedTokens().find(t => t.address === formData.tokenType)?.name}
+          </Badge>
+        </div>
+        <span className="text-xs text-gray-500">
+          {getSupportedTokens().find(t => t.address === formData.tokenType)?.symbol}
+        </span>
+      </div>
+      <p className="text-xs text-gray-600 mt-2">
+        All contributions and payouts will be processed in this token
+      </p>
+    </div>
+  )}
+</div>
             </CardContent>
           </Card>
 
-          {/* Invite Code Section */}
-          <Card className="border border-gray-200 bg-gradient-to-br from-white to-gray-50/50 shadow-lg">
-            <CardHeader className="pb-6">
-              <div className="flex items-center gap-3">
-                <div className="w-12 h-12 bg-gradient-to-br from-accent/20 to-accent/10 rounded-xl flex items-center justify-center">
-                  <Users className="h-6 w-6 text-accent" />
-                </div>
-                <div>
-                  <CardTitle className="text-2xl font-bold">Invite Code</CardTitle>
-                  <p className="text-muted-foreground">Share this code with potential members to join your group</p>
-                </div>
-              </div>
-            </CardHeader>
-            <CardContent className="space-y-6">
-              <div className="space-y-3">
-                <Label htmlFor="inviteCode" className="text-sm font-semibold text-foreground">
-                  Group Invite Code
-                </Label>
-                <div className="flex gap-3">
-                  <Input
-                    id="inviteCode"
-                    placeholder="Invite code will be generated after group creation"
-                    value={inviteCode}
-                    onChange={(e) => setInviteCode(e.target.value)}
-                    className="h-12 text-base border-2 border-gray-200 focus:border-accent focus:ring-4 focus:ring-accent/10 transition-all duration-300 bg-white/80 backdrop-blur-sm hover:bg-white"
-                    readOnly
-                  />
-                  <Button
-                    type="button"
-                    onClick={() => {
-                      if (inviteCode) {
-                        navigator.clipboard.writeText(inviteCode);
-                        toast({
-                          title: "Copied!",
-                          description: "Invite code copied to clipboard",
-                          duration: 2000,
-                        });
-                      }
-                    }}
-                    disabled={!inviteCode}
-                    className="h-12 px-6 bg-accent hover:bg-accent/80 text-white"
-                  >
-                    Copy
-                  </Button>
-                </div>
-                <p className="text-sm text-muted-foreground">
-                  This code will be automatically generated when your group is created using blockchain data. Share it with friends and family to invite them to join.
-                </p>
-                
-                {/* Debug Info - Remove this in production */}
-                <div className="mt-4 p-3 bg-gray-100 border border-gray-300 rounded text-xs">
-                  <p>Debug: inviteCodeGenerationFailed = {inviteCodeGenerationFailed.toString()}</p>
-                  <p>Debug: groupIdForManualGeneration = {groupIdForManualGeneration}</p>
-                  <Button
-                    type="button"
-                    onClick={() => {
-                      setInviteCodeGenerationFailed(true);
-                      setGroupIdForManualGeneration('123');
-                      console.log('Test button clicked - setting manual generation state');
-                    }}
-                    className="mt-2 bg-blue-500 hover:bg-blue-600 text-white px-3 py-1 text-xs"
-                  >
-                    Test: Show Manual Generation
-                  </Button>
-                </div>
-                
-                {/* Manual Generation Section */}
-                {inviteCodeGenerationFailed && (
-                  <div className="mt-6 p-4 bg-amber-50 border border-amber-200 rounded-lg">
-                    <div className="flex items-start gap-3">
-                      <div className="w-5 h-5 bg-amber-100 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5">
-                        <Info className="h-3 w-3 text-amber-600" />
-                      </div>
-                      <div className="flex-1">
-                        <h4 className="font-medium text-amber-800 mb-2">Invite Code Generation Failed</h4>
-                        <p className="text-sm text-amber-700 mb-3">
-                          Your group was created successfully, but the invite code couldn't be generated automatically. 
-                          You can manually generate it now using the button below.
-                        </p>
-                        
-                        {/* Status Information */}
-                        <div className="mb-3 p-3 bg-white border border-amber-200 rounded text-sm">
-                          <div className="grid grid-cols-2 gap-4">
-                            <div>
-                              <span className="font-medium text-amber-800">Group ID:</span>
-                              <span className="ml-2 font-mono text-amber-700">{groupIdForManualGeneration}</span>
-                            </div>
-                            <div>
-                              <span className="font-medium text-amber-800">Status:</span>
-                              <span className="ml-2 text-amber-700">
-                                {isGeneratingInviteCode ? 'Generating...' : 'Ready to generate'}
-                              </span>
-                            </div>
-                          </div>
-                        </div>
-                        
-                        {/* Action Buttons */}
-                        <div className="flex items-center gap-3 flex-wrap">
-                          <Button
-                            type="button"
-                            onClick={handleManualInviteCodeGeneration}
-                            disabled={isGeneratingInviteCode}
-                            className="bg-amber-600 hover:bg-amber-700 text-white px-4 py-2"
-                          >
-                            {isGeneratingInviteCode ? (
-                              <>
-                                <Loader className="h-4 w-4 mr-2 animate-spin" />
-                                Generating...
-                              </>
-                            ) : (
-                              <>
-                                <Clock className="h-4 w-4 mr-2" />
-                                Generate Invite Code
-                              </>
-                            )}
-                          </Button>
-                          
-                          {/* Retry with different parameters */}
-                          <Button
-                            type="button"
-                            variant="outline"
-                            onClick={async () => {
-                              if (!groupIdForManualGeneration) return;
-                              
-                              setIsGeneratingInviteCode(true);
-                              try {
-                                const Saving_Contract = await SAVING_CONTRACT_INSTANCE();
-                                if (!Saving_Contract) {
-                                  throw new Error('Smart contract not initialized');
-                                }
-                                
-                                // Try with different parameters
-                                console.log('Retrying with different parameters...');
-                                const inviteCodeTx = await Saving_Contract.generateInviteCode(
-                                  groupIdForManualGeneration,
-                                  5, // Lower maxUses
-                                  15  // Lower validityDays
-                                );
-                                
-                                const receipt = await inviteCodeTx.wait();
-                                console.log('Retry transaction successful:', receipt);
-                                
-                                // Try to get the code directly
-                                const groupInviteCode = await Saving_Contract.groupInviteCode(groupIdForManualGeneration);
-                                if (groupInviteCode && groupInviteCode !== "0" && groupInviteCode !== "") {
-                                  setInviteCode(groupInviteCode);
-                                  setInviteCodeGenerationFailed(false);
-                                  setGroupIdForManualGeneration('');
-                                  
-                                  toast({
-                                    title: "Invite Code Generated on Retry! 🎉",
-                                    description: `Your invite code: ${groupInviteCode}`,
-                                    duration: 8000,
-                                  });
-                                } else {
-                                  throw new Error('Code still not available after retry');
-                                }
-                              } catch (retryError) {
-                                console.error('Retry failed:', retryError);
-                                toast({
-                                  title: "Retry Failed",
-                                  description: "Alternative parameters also failed. Please contact support.",
-                                  variant: "destructive",
-                                  duration: 5000,
-                                });
-                              } finally {
-                                setIsGeneratingInviteCode(false);
-                              }
-                            }}
-                            disabled={isGeneratingInviteCode}
-                            className="border-amber-300 text-amber-700 hover:bg-amber-100"
-                          >
-                            <RefreshCw className="h-4 w-4 mr-2" />
-                            Retry with Different Params
-                          </Button>
-                          
-                          {/* Manual entry option */}
-                          <Button
-                            type="button"
-                            variant="outline"
-                            onClick={() => {
-                              const manualCode = prompt('Enter the invite code manually (if you have it):');
-                              if (manualCode && manualCode.trim()) {
-                                setInviteCode(manualCode.trim());
-                                setInviteCodeGenerationFailed(false);
-                                setGroupIdForManualGeneration('');
-                                
-                                toast({
-                                  title: "Invite Code Set Manually",
-                                  description: "You can now share this code with members.",
-                                  duration: 5000,
-                                });
-                              }
-                            }}
-                            disabled={isGeneratingInviteCode}
-                            className="border-gray-300 text-gray-700 hover:bg-gray-100"
-                          >
-                            <Edit className="h-4 w-4 mr-2" />
-                            Enter Manually
-                          </Button>
-                        </div>
-                        
-                        {/* Troubleshooting Tips */}
-                        <div className="mt-4 p-3 bg-blue-50 border border-blue-200 rounded text-sm">
-                          <h5 className="font-medium text-blue-800 mb-2">Troubleshooting Tips:</h5>
-                          <ul className="text-blue-700 space-y-1 text-xs">
-                            <li>• Ensure your wallet has sufficient funds for gas fees</li>
-                            <li>• Check that you're connected to the correct network (Mantle Sepolia)</li>
-                            <li>• Verify the group exists and is not already active</li>
-                            <li>• Try refreshing the page and reconnecting your wallet</li>
-                          </ul>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                )}
-              </div>
-            </CardContent>
-          </Card>
+          <Button onClick={handleSave}>SAVE WRAPPER</Button>
 
           {/* Submit Button */}
           <Button 
@@ -1018,42 +699,43 @@ const CreateGroup = () => {
           </Card>
 
           {/* Preview */}
-          {formData.contributionAmount && formData.maxMembers && (
-            <Card className="border-0 bg-white/60 backdrop-blur-sm shadow-sm hover:shadow-md transition-all duration-300">
-              <CardHeader className="pb-4">
-                <CardTitle className="flex items-center gap-3 text-base font-semibold text-gray-800">
-                  <div className="w-8 h-8 bg-green-100 rounded-lg flex items-center justify-center">
-                    <Info className="h-4 w-4 text-green-600" />
-                  </div>
-                  Group Preview
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="flex justify-between items-center p-3 bg-gray-50/50 rounded-lg">
-                  <span className="text-sm text-gray-600">Total Pool</span>
-                  <Badge variant="secondary" className="bg-primary/10 text-primary text-xs">
-                    {tokenOptions.find(t => t.value === formData.tokenType)?.symbol || '₦'}{(parseInt(formData.contributionAmount) * parseInt(formData.maxMembers)).toLocaleString()}
-                  </Badge>
-                </div>
-                <div className="flex justify-between items-center p-3 bg-gray-50/50 rounded-lg">
-                  <span className="text-sm text-gray-600">Payout Amount</span>
-                  <span className="font-semibold text-gray-800">
-                    {tokenOptions.find(t => t.value === formData.tokenType)?.symbol || '₦'}{parseInt(formData.contributionAmount)?.toLocaleString()}
-                  </span>
-                </div>
-                <div className="flex justify-between items-center p-3 bg-gray-50/50 rounded-lg">
-                  <span className="text-sm text-gray-600">Token</span>
-                  <Badge variant="outline" className="bg-blue-100 text-blue-700 text-xs">
-                    {tokenOptions.find(t => t.value === formData.tokenType)?.label || 'Naira'}
-                  </Badge>
-                </div>
-                <div className="flex justify-between items-center p-3 bg-gray-50/50 rounded-lg">
-                  <span className="text-sm text-gray-600">Duration</span>
-                  <span className="font-semibold text-gray-800">{formData.maxMembers} rounds</span>
-                </div>
-              </CardContent>
-            </Card>
-          )}
+         {formData.contributionAmount && formData.maxMembers && (
+  <Card className="border-0 bg-white/60 backdrop-blur-sm shadow-sm hover:shadow-md transition-all duration-300">
+    <CardHeader className="pb-4">
+      <CardTitle className="flex items-center gap-3 text-base font-semibold text-gray-800">
+        <div className="w-8 h-8 bg-green-100 rounded-lg flex items-center justify-center">
+          <Info className="h-4 w-4 text-green-600" />
+        </div>
+        Group Preview
+      </CardTitle>
+    </CardHeader>
+    <CardContent className="space-y-4">
+      <div className="flex justify-between items-center p-3 bg-gray-50/50 rounded-lg">
+        <span className="text-sm text-gray-600">Total Pool</span>
+        <Badge variant="secondary" className="bg-primary/10 text-primary text-xs">
+          {getSupportedTokens().find(t => t.address === formData.tokenType)?.symbol || ''}{(parseInt(formData.contributionAmount) * parseInt(formData.maxMembers)).toLocaleString()}
+        </Badge>
+      </div>
+      <div className="flex justify-between items-center p-3 bg-gray-50/50 rounded-lg">
+        <span className="text-sm text-gray-600">Payout Amount</span>
+        <span className="font-semibold text-gray-800">
+          {getSupportedTokens().find(t => t.address === formData.tokenType)?.symbol || ''}{parseInt(formData.contributionAmount)?.toLocaleString()}
+        </span>
+      </div>
+      <div className="flex justify-between items-center p-3 bg-gray-50/50 rounded-lg">
+        <span className="text-sm text-gray-600">Token</span>
+        <Badge variant="outline" className="bg-blue-100 text-blue-700 text-xs">
+          {getSupportedTokens().find(t => t.address === formData.tokenType)?.name || ''}
+        </Badge>
+      </div>
+      <div className="flex justify-between items-center p-3 bg-gray-50/50 rounded-lg">
+        <span className="text-sm text-gray-600">Duration</span>
+        <span className="font-semibold text-gray-800">{formData.maxMembers} rounds</span>
+      </div>
+    </CardContent>
+  </Card>
+)}
+
 
           {/* Cultural Context */}
           <Card className="border-0 bg-white/60 backdrop-blur-sm shadow-sm hover:shadow-md transition-all duration-300">

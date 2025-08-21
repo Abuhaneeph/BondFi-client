@@ -56,7 +56,7 @@ const Features: React.FC<FeaturesProps> = ({ onPageChange }) => {
             {
               icon: Shield,
               title: 'Community Trust',
-              description: 'Blockchain-secured trust system with peer verification and transparent reputation scoring',
+              description: 'Mantle-secured trust system with peer verification and transparent reputation scoring',
               gradient: 'from-teal-500 to-cyan-600'
             },
             {

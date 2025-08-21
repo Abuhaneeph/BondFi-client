@@ -75,7 +75,7 @@ const HeroSection: React.FC<HeroSectionProps> = ({ onPageChange }) => {
           </div>
         </div>
         
-        {/* Blockchain Security */}
+        {/* Mantle Security */}
         <div className="absolute bottom-1/4 left-1/3 w-20 h-20 flex items-center justify-center transition-all duration-500 cursor-pointer opacity-30 hover:opacity-80 hover:scale-110 hover:shadow-lg pointer-events-auto animate-float-6">
           <div className="w-16 h-16 bg-gradient-to-br from-red-400 to-rose-500 rounded-full flex items-center justify-center shadow-lg">
             <Shield className="w-8 h-8 text-white" />
