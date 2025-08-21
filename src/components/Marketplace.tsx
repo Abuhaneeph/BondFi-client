@@ -560,6 +560,9 @@ const Marketplace = () => {
           </div>
         </section>
       </main>
+
+      {/* Floating AI Chat Button */}
+      {/* Removed as per edit hint */}
     </div>
   );
 };
