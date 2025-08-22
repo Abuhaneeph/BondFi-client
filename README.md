@@ -2,8 +2,8 @@
 
 
 ## 🌟 Overview
+**BondFi** is a decentralized finance (DeFi) platform that merges traditional community savings practices (Ajo/Esusu/ROSCAs) with modern blockchain technology. Built on Mantle Sepolia, it enables users to join automated rotating savings circles, access installment-based commerce at partner merchants, and manage finances across multiple stablecoins. Powered by Chainlink price feeds and on-chain credit scoring, BondFi also integrates AI-driven financial insights and recommendations, creating a truly borderless savings and commerce ecosystem
 
-**BondFi** is a decentralized finance (DeFi) platform that merges traditional African community savings practices (Ajo/Esusu/ROSCAs) with modern blockchain technology. Built on Mantle Sepolia, it enables users to join automated rotating savings circles, access installment-based commerce at partner merchants, and manage finances across multiple stablecoins. Powered by Chainlink price feeds and on-chain credit scoring, BondFi also integrates AI-driven financial insights and recommendations, making it a truly borderless ROSCA ecosystem
 ## 🚀 Key Features
 
 ### 💰 **Rotational Savings (Ajo/Esusu)**
