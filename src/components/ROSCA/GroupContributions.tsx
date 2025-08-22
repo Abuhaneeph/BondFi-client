@@ -25,6 +25,7 @@ const GroupContributions: React.FC<GroupContributionsProps> = ({ myGroups }) => 
   const [selectedGroup, setSelectedGroup] = useState<string>('');
   const [contributionAmount, setContributionAmount] = useState<string>('');
   const [isProcessing, setIsProcessing] = useState(false);
+  const[isClaiming, setIsClaiming] =useState(false);
   const [groupDetails, setGroupDetails] = useState<any>(null);
   const [userContributionStatus, setUserContributionStatus] = useState<any>(null);
 
@@ -220,15 +221,11 @@ const GroupContributions: React.FC<GroupContributionsProps> = ({ myGroups }) => 
       });
       
       // Refresh data
-      fetchGroupDetails();
+    
       
     } catch (error) {
       console.error('Error making contribution:', error);
-      toast({
-        title: "Error",
-        description: "Failed to make contribution. Please try again.",
-        variant: "destructive"
-      });
+      
     } finally {
       setIsProcessing(false);
     }
@@ -247,7 +244,7 @@ const GroupContributions: React.FC<GroupContributionsProps> = ({ myGroups }) => 
       return;
     }
 
-    setIsProcessing(true);
+    setIsClaiming(true);
     try {
       const Saving_Contract = await SAVING_CONTRACT_INSTANCE();
       const claimTx = await Saving_Contract.claimPayout(selectedGroup);
@@ -258,17 +255,13 @@ const GroupContributions: React.FC<GroupContributionsProps> = ({ myGroups }) => 
         description: "Payout claimed successfully!",
       });
       
-      fetchGroupDetails();
+    
       
     } catch (error) {
       console.error('Error claiming payout:', error);
-      toast({
-        title: "Error",
-        description: "Failed to claim payout. Please try again.",
-        variant: "destructive"
-      });
+
     } finally {
-      setIsProcessing(false);
+      setIsClaiming(false);
     }
   };
 
@@ -501,15 +494,15 @@ const GroupContributions: React.FC<GroupContributionsProps> = ({ myGroups }) => 
                 
                 <Button 
                   onClick={handleClaimPayout}
-                  disabled={groupDetails.currentRecipient !== address || isProcessing || !groupDetails.isActive}
+                  disabled={groupDetails.currentRecipient !== address || isClaiming || !groupDetails.isActive}
                   className="w-full"
                   size="lg"
                   variant={groupDetails.currentRecipient === address ? "default" : "secondary"}
                 >
-                  {isProcessing ? (
+                  {isClaiming ? (
                     <>
                       <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
-                      Processing...
+                      Claiming...
                     </>
                   ) : groupDetails.currentRecipient === address ? (
                     <>

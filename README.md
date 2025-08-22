@@ -84,7 +84,7 @@
 
 1. **Clone the repository**
    ```bash
-   git clone https://github.com/your-username/BondFi-client.git
+   git clone https://github.com/Abuhaneeph/BondFi-client.git
    cd BondFi-client
    ```
 

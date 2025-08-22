@@ -5,71 +5,47 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { Users, DollarSign, Calendar, Wallet, TrendingUp, Download, Clock, CheckCircle } from 'lucide-react';
-import { useContractInstances } from '@/provider/ContractInstanceProvider';
-import { useAccount } from 'wagmi';
-import { useToast } from '@/hooks/use-toast';
+import { CONTRACT_ADDRESSES, useContractInstances } from '@/provider/ContractInstanceProvider';
+import tokens from '@/lib/Tokens/tokens';
 
 interface PayoutsProps {
   myGroups: any[];
 }
 
 const Payouts: React.FC<PayoutsProps> = ({ myGroups }) => {
-  const { SAVING_CONTRACT_INSTANCE } = useContractInstances();
-  const { address } = useAccount();
-  const { toast } = useToast();
-  
+  const { SAVING_CONTRACT_INSTANCE, address } = useContractInstances();
   const [selectedGroup, setSelectedGroup] = useState<string>('');
   const [isProcessing, setIsProcessing] = useState(false);
   const [groupDetails, setGroupDetails] = useState<any>(null);
   const [userContributionStatus, setUserContributionStatus] = useState<any>(null);
   const [payoutHistory, setPayoutHistory] = useState<any[]>([]);
+  const [successMessage, setSuccessMessage] = useState('');
+  const [errorMessage, setErrorMessage] = useState('');
 
-  // Format token amounts from Wei
-  const formatTokenAmount = (amountInWei: any, decimals = 18) => {
-    if (!amountInWei) return '₦0';
-    
-    try {
-      const amount = typeof amountInWei === 'bigint' 
-        ? amountInWei.toString() 
-        : amountInWei.toString();
-      
-      const divisor = Math.pow(10, decimals);
-      const parsedAmount = parseFloat(amount) / divisor;
-      
-      if (isNaN(parsedAmount)) return '₦0';
-      
-      return `₦${parsedAmount.toLocaleString()}`;
-    } catch (error) {
-      console.error('Error formatting token amount:', error);
-      return '₦0';
-    }
+  // Get supported tokens (excluding ETH which is id: 1) - same as AjoEsusuInterface
+  const getSupportedTokens = () => {
+    return tokens.filter(token => token.id > 1);
   };
 
-  // Calculate time remaining for next payout
-  const getTimeRemaining = (timestamp: any) => {
-    if (!timestamp) return 'N/A';
+  // Format token amounts - same logic as AjoEsusuInterface
+  const formatTokenAmount = (amountInWei, decimals = 18) => {
+    if (!amountInWei) return '0';
+    const divisor = Math.pow(10, decimals);
+    return (parseFloat(amountInWei) / divisor).toFixed(2);
+  };
+
+  // Get time remaining - same logic as AjoEsusuInterface
+  const getTimeRemaining = (timestamp) => {
+    const now = Math.floor(Date.now() / 1000);
+    const remaining = Number(timestamp) - now;
     
-    try {
-      const timestampValue = typeof timestamp === 'bigint' 
-        ? timestamp.toString() 
-        : timestamp.toString();
-      
-      const now = Math.floor(Date.now() / 1000);
-      const remaining = Number(timestampValue) - now;
-      
-      if (remaining <= 0) return "Expired";
-      
-      const days = Math.floor(remaining / 86400);
-      const hours = Math.floor((remaining % 86400) / 3600);
-      const minutes = Math.floor((remaining % 3600) / 60);
-      
-      if (days > 0) return `${days} Days`;
-      if (hours > 0) return `${hours} Hours`;
-      return `${minutes} Minutes`;
-    } catch (error) {
-      console.error('Error calculating time remaining:', error);
-      return 'N/A';
-    }
+    if (remaining <= 0) return "Expired";
+    
+    const days = Math.floor(remaining / 86400);
+    const hours = Math.floor((remaining % 86400) / 3600);
+    const minutes = Math.floor((remaining % 3600) / 60);
+    
+    return `${days}d ${hours}h ${minutes}m`;
   };
 
   // Fetch group details when a group is selected
@@ -87,79 +63,42 @@ const Payouts: React.FC<PayoutsProps> = ({ myGroups }) => {
     try {
       const Saving_Contract = await SAVING_CONTRACT_INSTANCE();
       const groupSummary = await Saving_Contract.getGroupSummary(selectedGroup);
-      const groupDetails = await Saving_Contract.getGroupDetails(selectedGroup);
       
-      // Find the selected group from myGroups to get the correct data structure
+      // Find the selected group from myGroups to get consistent data
       const selectedGroupData = myGroups.find(group => 
-        (group.id || group.groupId) === selectedGroup
+        (group[0] || group.groupId) === selectedGroup
       );
       
-      // Clean the group name - extract only the name part, not the address
-      let cleanGroupName = `Group ${selectedGroup}`;
-      if (selectedGroupData?.name && typeof selectedGroupData.name === 'string') {
-        if (selectedGroupData.name.includes('/')) {
-          const parts = selectedGroupData.name.split('/');
-          cleanGroupName = parts[0].trim() || `Group ${selectedGroup}`;
-        } else {
-          cleanGroupName = selectedGroupData.name.trim();
-        }
-      }
-      
-      // Clean other fields that might contain addresses - filter out any field with 0x
-      const cleanMaxMembers = (() => {
-        const value = selectedGroupData?.groupSize || groupSummary[4] || 0;
-        if (typeof value === 'string' && value.includes('0x')) return 0;
-        if (typeof value === 'string' && !isNaN(parseInt(value))) return parseInt(value);
-        if (typeof value === 'number') return value;
-        return 0;
-      })();
-      
-      const cleanCurrentMembers = (() => {
-        const value = selectedGroupData?.memberCount || groupSummary[8] || 0;
-        if (typeof value === 'string' && value.includes('0x')) return 0;
-        if (typeof value === 'string' && !isNaN(parseInt(value))) return parseInt(value);
-        if (typeof value === 'number') return value;
-        return 0;
-      })();
-      
-      const cleanCurrentRound = (() => {
-        const value = selectedGroupData?.currentCycle || groupSummary[10] || 0;
-        if (typeof value === 'string' && value.includes('0x')) return 0;
-        if (typeof value === 'string' && !isNaN(parseInt(value))) return parseInt(value);
-        if (typeof value === 'number') return value;
-        return 0;
-      })();
-      
-      const cleanTotalRounds = (() => {
-        const value = selectedGroupData?.totalCycles || groupSummary[11] || 0;
-        if (typeof value === 'string' && value.includes('0x')) return 0;
-        if (typeof value === 'string' && !isNaN(parseInt(value))) return parseInt(value);
-        if (typeof value === 'number') return value;
-        return 0;
-      })();
-      
-      setGroupDetails({
-        groupId: selectedGroup,
-        name: cleanGroupName,
-        description: selectedGroupData?.description || groupDetails[1] || '',
-        creator: selectedGroupData?.creator || groupSummary[2] || '',
-        contributionAmount: selectedGroupData?.contributionAmount || groupSummary[3] || 0,
-        maxMembers: cleanMaxMembers,
-        currentMembers: cleanCurrentMembers,
-        currentRound: cleanCurrentRound,
-        totalRounds: cleanTotalRounds,
-        isActive: selectedGroupData?.status === 'active' || groupSummary[7] || false,
-        isCompleted: selectedGroupData?.status === 'completed' || false,
-        nextContributionDeadline: groupSummary[15] || 0,
-        startTime: groupDetails[14] || 0
-      });
+       // Enhanced data extraction with array index support (same as GroupContributions)
+    const extractCleanValue = (value) => {
+      if (typeof value === 'string' && value.includes('0x')) return 0;
+      if (typeof value === 'string' && !isNaN(parseInt(value))) return parseInt(value);
+      if (typeof value === 'number') return value;
+      if (typeof value === 'bigint') return Number(value);
+      return 0;
+    };
+
+    setGroupDetails({
+      groupId: selectedGroup,
+      name: selectedGroupData?.[1] || `Group ${selectedGroup}`,
+      description: selectedGroupData?.description || '',
+      creator: selectedGroupData?.[2] || groupSummary[2] || '',
+      token: selectedGroupData?.[4] || groupSummary[4] || '',
+      contributionAmount: selectedGroupData?.[5] || groupSummary[5] || 0,
+      currentMembers: extractCleanValue(selectedGroupData?.[6] || groupSummary[6]),
+      maxMembers: extractCleanValue(selectedGroupData?.[7] || groupSummary[7]),
+      currentRound: extractCleanValue(selectedGroupData?.[8] || groupSummary[8]),
+      totalRounds: extractCleanValue(selectedGroupData?.[9] || groupSummary[9]),
+      isActive: selectedGroupData?.[10] || groupSummary[10] || false,
+      isCompleted: selectedGroupData?.[11] || groupSummary[11] || false,
+      canJoin: groupSummary[12] || false,
+      nextContributionDeadline: groupSummary[13] || 0,
+      currentRecipient: groupSummary[14] || '',
+      currentRecipientName: groupSummary[15] || ''
+    });
     } catch (error) {
       console.error('Error fetching group details:', error);
-      toast({
-        title: "Error",
-        description: "Failed to fetch group details",
-        variant: "destructive"
-      });
+      setErrorMessage('Failed to fetch group details');
     }
   };
 
@@ -179,25 +118,9 @@ const Payouts: React.FC<PayoutsProps> = ({ myGroups }) => {
     if (!selectedGroup || !address || !SAVING_CONTRACT_INSTANCE) return;
     
     try {
-      const Saving_Contract = await SAVING_CONTRACT_INSTANCE();
-      // This would need to be implemented based on your smart contract structure
-      // For now, we'll use a placeholder
-      setPayoutHistory([
-        {
-          id: 1,
-          amount: '₦5000',
-          date: '2024-01-15',
-          status: 'completed',
-          round: 3
-        },
-        {
-          id: 2,
-          amount: '₦5000',
-          date: '2024-02-15',
-          status: 'completed',
-          round: 6
-        }
-      ]);
+      // For now, using placeholder data as the contract structure needs to be clarified
+      // This should be replaced with actual contract calls when available
+      setPayoutHistory([]);
     } catch (error) {
       console.error('Error fetching payout history:', error);
     }
@@ -205,11 +128,7 @@ const Payouts: React.FC<PayoutsProps> = ({ myGroups }) => {
 
   const handleCashout = async () => {
     if (!selectedGroup || !SAVING_CONTRACT_INSTANCE) {
-      toast({
-        title: "Error",
-        description: "Please select a group first",
-        variant: "destructive"
-      });
+      setErrorMessage('Please select a group first');
       return;
     }
 
@@ -217,13 +136,10 @@ const Payouts: React.FC<PayoutsProps> = ({ myGroups }) => {
     try {
       const Saving_Contract = await SAVING_CONTRACT_INSTANCE();
       
-      const tx = await Saving_Contract.cashout(selectedGroup);
+      const tx = await Saving_Contract.claimPayout(selectedGroup);
       await tx.wait();
       
-      toast({
-        title: "Success",
-        description: "Cashout successful! Your earnings have been sent to your wallet.",
-      });
+      setSuccessMessage('Payout claimed successfully! Your earnings have been sent to your wallet.');
       
       // Refresh data
       fetchGroupDetails();
@@ -231,12 +147,8 @@ const Payouts: React.FC<PayoutsProps> = ({ myGroups }) => {
       fetchPayoutHistory();
       
     } catch (error) {
-      console.error('Error cashing out:', error);
-      toast({
-        title: "Error",
-        description: "Failed to cashout. Please try again.",
-        variant: "destructive"
-      });
+      console.error('Error claiming payout:', error);
+      setErrorMessage('Failed to claim payout. Please try again.');
     } finally {
       setIsProcessing(false);
     }
@@ -244,51 +156,66 @@ const Payouts: React.FC<PayoutsProps> = ({ myGroups }) => {
 
   if (myGroups.length === 0) {
     return (
-      <Card className="rosca-card">
-        <CardContent className="text-center py-12">
-          <Users className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
-          <h3 className="text-lg font-semibold mb-2">No Groups Available</h3>
-          <p className="text-muted-foreground mb-4">
-            You need to join or create a ROSCA group before you can access payouts.
-          </p>
-        </CardContent>
-      </Card>
+      <div className="max-w-6xl mx-auto">
+        <Card className="bg-white rounded-2xl shadow-sm border border-stone-200">
+          <CardContent className="text-center py-12">
+            <Users className="h-12 w-12 text-stone-400 mx-auto mb-4" />
+            <h3 className="text-lg font-semibold text-stone-800 mb-2">No Groups Available</h3>
+            <p className="text-stone-600 mb-4">
+              You need to join or create a ROSCA group before you can access payouts.
+            </p>
+          </CardContent>
+        </Card>
+      </div>
     );
   }
 
   return (
-    <div className="space-y-6">
+    <div className="max-w-6xl mx-auto space-y-6">
+      {/* Success/Error Messages */}
+      {successMessage && (
+        <div className="bg-green-50 border border-green-200 rounded-xl p-4 flex items-center space-x-3">
+          <CheckCircle className="w-5 h-5 text-green-600" />
+          <p className="text-green-800">{successMessage}</p>
+          <button onClick={() => setSuccessMessage('')} className="ml-auto text-green-600 hover:text-green-800">
+            ×
+          </button>
+        </div>
+      )}
+
+      {errorMessage && (
+        <div className="bg-red-50 border border-red-200 rounded-xl p-4 flex items-center space-x-3">
+          <TrendingUp className="w-5 h-5 text-red-600" />
+          <p className="text-red-800">{errorMessage}</p>
+          <button onClick={() => setErrorMessage('')} className="ml-auto text-red-600 hover:text-red-800">
+            ×
+          </button>
+        </div>
+      )}
+
       {/* Group Selection */}
-      <Card className="rosca-card">
+      <Card className="bg-white rounded-2xl shadow-sm border border-stone-200">
         <CardHeader>
-          <CardTitle className="flex items-center gap-2">
+          <CardTitle className="flex items-center gap-2 text-stone-800">
             <Users className="h-5 w-5" />
             Select Group for Payouts
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="space-y-2">
-            <Label htmlFor="group-select">Choose a ROSCA Group</Label>
+            <Label htmlFor="group-select" className="text-stone-700">Choose a ROSCA Group</Label>
             <Select value={selectedGroup} onValueChange={setSelectedGroup}>
-              <SelectTrigger>
+              <SelectTrigger className="border-stone-300">
                 <SelectValue placeholder="Select a group to view payouts and cashout" />
               </SelectTrigger>
               <SelectContent>
                 {myGroups.map((group, index) => {
-                  // Parse group name properly - extract just the name part, not the address
-                  let displayName = `Group ${index + 1}`;
-                  if (group.name && typeof group.name === 'string') {
-                    if (group.name.includes('/')) {
-                      const parts = group.name.split('/');
-                      displayName = parts[0].trim() || `Group ${index + 1}`;
-                    } else {
-                      displayName = group.name.trim();
-                    }
-                  }
+                  const groupName = group[1] || `Group ${index + 1}`;
+                  const groupId = group[0] || index.toString();
                   
                   return (
-                    <SelectItem key={index} value={group.id || group.groupId || index.toString()}>
-                      <span className="text-gray-900 font-medium">{displayName}</span>
+                    <SelectItem key={index} value={groupId}>
+                      <span className="text-stone-900 font-medium">{groupName}</span>
                     </SelectItem>
                   );
                 })}
@@ -302,52 +229,66 @@ const Payouts: React.FC<PayoutsProps> = ({ myGroups }) => {
       {selectedGroup && groupDetails && (
         <>
           {/* Group Information */}
-          <Card className="rosca-card">
+          <Card className="bg-white rounded-2xl shadow-sm border border-stone-200">
             <CardHeader>
-              <CardTitle className="flex items-center gap-2">
+              <CardTitle className="flex items-center gap-2 text-stone-800">
                 <DollarSign className="h-5 w-5" />
                 {groupDetails.name} - Payout Status
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                <div className="text-center p-4 bg-gray-50 rounded-lg border border-gray-200">
-                  <Users className="h-6 w-6 text-gray-600 mx-auto mb-2" />
-                  <p className="text-lg font-semibold text-gray-900 break-words">
-                    {groupDetails.currentMembers || 0}/{groupDetails.maxMembers || 0}
+                <div className="text-center p-4 bg-stone-50 rounded-lg border border-stone-200">
+                  <Users className="h-6 w-6 text-stone-600 mx-auto mb-2" />
+                  <p className="text-lg font-semibold text-stone-800">
+                    {groupDetails.currentMembers}/{groupDetails.maxMembers}
                   </p>
-                  <p className="text-sm text-gray-600">Members</p>
+                  <p className="text-sm text-stone-600">Members</p>
                 </div>
-                <div className="text-center p-4 bg-gray-50 rounded-lg border border-gray-200">
-                  <Calendar className="h-6 w-6 text-gray-600 mx-auto mb-2" />
-                  <p className="text-lg font-semibold text-gray-900 break-words">
-                    {groupDetails.currentRound || 0}/{groupDetails.totalRounds || 0}
+                <div className="text-center p-4 bg-stone-50 rounded-lg border border-stone-200">
+                  <Calendar className="h-6 w-6 text-stone-600 mx-auto mb-2" />
+                  <p className="text-lg font-semibold text-stone-800">
+                    {groupDetails.currentRound}/{groupDetails.totalRounds}
                   </p>
-                  <p className="text-sm text-gray-600">Current Round</p>
+                  <p className="text-sm text-stone-600">Current Round</p>
                 </div>
-                <div className="text-center p-4 bg-gray-50 rounded-lg border border-gray-200">
-                  <Wallet className="h-6 w-6 text-gray-600 mx-auto mb-2" />
-                  <p className="text-lg font-semibold text-gray-900 break-words">
-                    {formatTokenAmount(groupDetails.contributionAmount)}
+                <div className="text-center p-4 bg-stone-50 rounded-lg border border-stone-200">
+                  <Wallet className="h-6 w-6 text-stone-600 mx-auto mb-2" />
+                  <p className="text-lg font-semibold text-stone-800">
+                    {formatTokenAmount(groupDetails.contributionAmount)} {getSupportedTokens().find(t => t.address === groupDetails.token)?.symbol}
                   </p>
-                  <p className="text-sm text-gray-600">Per Round</p>
+                  <p className="text-sm text-stone-600">Per Round</p>
                 </div>
               </div>
 
-              {groupDetails.isActive && (
-                <div className="text-center p-4 bg-gray-50 rounded-lg border border-gray-200">
-                  <p className="text-sm text-gray-700 font-medium">
+              {groupDetails.isActive && groupDetails.nextContributionDeadline && (
+                <div className="text-center p-4 bg-stone-50 rounded-lg border border-stone-200">
+                  <p className="text-sm text-stone-700 font-medium">
                     Next contribution deadline: {getTimeRemaining(groupDetails.nextContributionDeadline)}
                   </p>
+                </div>
+              )}
+
+              {groupDetails.currentRecipient && groupDetails.currentRecipient !== "0x0000000000000000000000000000000000000000" && (
+                <div className="bg-gradient-to-r from-emerald-50 to-blue-50 rounded-lg p-4">
+                  <div className="flex items-center space-x-2">
+                    <TrendingUp className="w-5 h-5 text-emerald-600" />
+                    <span className="font-medium text-stone-800">
+                      Current Recipient: {groupDetails.currentRecipientName || 'Unknown'}
+                    </span>
+                    {groupDetails.currentRecipient === address && (
+                      <Badge className="bg-emerald-100 text-emerald-800">Your Turn!</Badge>
+                    )}
+                  </div>
                 </div>
               )}
             </CardContent>
           </Card>
 
           {/* Available for Cashout */}
-          <Card className="rosca-card">
+          <Card className="bg-white rounded-2xl shadow-sm border border-stone-200">
             <CardHeader>
-              <CardTitle className="flex items-center gap-2">
+              <CardTitle className="flex items-center gap-2 text-stone-800">
                 <TrendingUp className="h-5 w-5" />
                 Available for Cashout
               </CardTitle>
@@ -356,9 +297,9 @@ const Payouts: React.FC<PayoutsProps> = ({ myGroups }) => {
               <div className="text-center p-4 bg-green-50 rounded-lg">
                 <TrendingUp className="h-8 w-8 text-green-600 mx-auto mb-2" />
                 <p className="text-lg font-semibold text-green-800">
-                  {userContributionStatus?.availableForCashout ? 
-                    formatTokenAmount(userContributionStatus.availableForCashout) : 
-                    '₦0'
+                  {groupDetails.currentRecipient === address && groupDetails.isActive ? 
+                    `${formatTokenAmount(groupDetails.contributionAmount * groupDetails.currentMembers)} ${getSupportedTokens().find(t => t.address === groupDetails.token)?.symbol}` : 
+                    '0'
                   }
                 </p>
                 <p className="text-sm text-green-600">Available for Cashout</p>
@@ -366,8 +307,8 @@ const Payouts: React.FC<PayoutsProps> = ({ myGroups }) => {
               
               <Button 
                 onClick={handleCashout}
-                disabled={!userContributionStatus?.availableForCashout || isProcessing}
-                className="w-full"
+                disabled={groupDetails.currentRecipient !== address || !groupDetails.isActive || isProcessing}
+                className="w-full bg-gradient-to-r from-terracotta to-sage hover:shadow-lg"
               >
                 {isProcessing ? (
                   <>
@@ -377,17 +318,23 @@ const Payouts: React.FC<PayoutsProps> = ({ myGroups }) => {
                 ) : (
                   <>
                     <Download className="h-4 w-4 mr-2" />
-                    Cashout Earnings
+                    Claim Payout
                   </>
                 )}
               </Button>
+
+              {groupDetails.currentRecipient !== address && (
+                <p className="text-center text-stone-500 text-sm">
+                  Payout available when it's your turn to receive
+                </p>
+              )}
             </CardContent>
           </Card>
 
           {/* Payout History */}
-          <Card className="rosca-card">
+          <Card className="bg-white rounded-2xl shadow-sm border border-stone-200">
             <CardHeader>
-              <CardTitle className="flex items-center gap-2">
+              <CardTitle className="flex items-center gap-2 text-stone-800">
                 <Clock className="h-5 w-5" />
                 Payout History
               </CardTitle>
@@ -396,18 +343,18 @@ const Payouts: React.FC<PayoutsProps> = ({ myGroups }) => {
               {payoutHistory.length > 0 ? (
                 <div className="space-y-3">
                   {payoutHistory.map((payout) => (
-                    <div key={payout.id} className="flex items-center justify-between p-3 bg-muted/30 rounded-lg">
+                    <div key={payout.id} className="flex items-center justify-between p-3 bg-stone-50 rounded-lg">
                       <div className="flex items-center gap-3">
                         <div className={`w-3 h-3 rounded-full ${
                           payout.status === 'completed' ? 'bg-green-500' : 'bg-yellow-500'
                         }`}></div>
                         <div>
-                          <p className="font-medium text-sm">Round {payout.round}</p>
-                          <p className="text-xs text-muted-foreground">{payout.date}</p>
+                          <p className="font-medium text-sm text-stone-800">Round {payout.round}</p>
+                          <p className="text-xs text-stone-500">{payout.date}</p>
                         </div>
                       </div>
                       <div className="text-right">
-                        <p className="font-semibold text-sm">{payout.amount}</p>
+                        <p className="font-semibold text-sm text-stone-800">{payout.amount}</p>
                         <Badge variant={payout.status === 'completed' ? 'default' : 'secondary'}>
                           {payout.status === 'completed' ? 'Completed' : 'Pending'}
                         </Badge>
@@ -417,8 +364,8 @@ const Payouts: React.FC<PayoutsProps> = ({ myGroups }) => {
                 </div>
               ) : (
                 <div className="text-center py-8">
-                  <Clock className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
-                  <p className="text-muted-foreground">No payout history available yet</p>
+                  <Clock className="h-12 w-12 text-stone-300 mx-auto mb-4" />
+                  <p className="text-stone-500">No payout history available yet</p>
                 </div>
               )}
             </CardContent>

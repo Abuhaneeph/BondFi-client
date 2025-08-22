@@ -19,7 +19,7 @@ import type { Token } from '@/lib/Tokens/tokens.ts';
 // Contract addresses - replace with your actual contract addresses
 export const CONTRACT_ADDRESSES = {
   swapAddress: '0x013b0CA4E4559339F43682B7ac05479eD48E694f',
-  priceFeedAddress: '0x6a257B0a406eB762C105130314dB15B1a29AbC4e',
+  priceFeedAddress: '0xF34EC7483183b0B50E7b50e538ADd13De231eD9b',
   afriStableAddress: '0x6615c93A524E2B2daa36276Ac418D3cB60d2DC60',
   savingAddress: '0xC0c182d9895882C61C1fC1DF20F858e5E29a4f71',
   multiCurrencySaving: '0x63e5A563F9b4009cbf61EDFcc85f883dbd1b833A',

@@ -41,6 +41,7 @@ const MyGroups: React.FC<MyGroupsProps> = ({ myGroups, setActiveTab, onRefreshDa
   
   const [expandedGroup, setExpandedGroup] = useState<string | null>(null);
   const [isProcessing, setIsProcessing] = useState(false);
+   const [isClaiming, setIsClaiming] = useState(false);
   const [groupDetails, setGroupDetails] = useState<{[key: string]: any}>({});
   
   // Invite code states - copied from AjoEsusuInterface
@@ -251,22 +252,17 @@ const MyGroups: React.FC<MyGroupsProps> = ({ myGroups, setActiveTab, onRefreshDa
         description: "Contribution made successfully!",
       });
       
-      fetchAllGroupDetails();
-      onRefreshData();
+      
     } catch (error) {
       console.error('Contribution error:', error);
-      toast({
-        title: "Error",
-        description: "Failed to make contribution",
-        variant: "destructive"
-      });
+      
     }
     setIsProcessing(false);
   };
 
   // Handle claim payout - matching AjoEsusuInterface logic
   const handleClaimPayout = async (groupId: string) => {
-    setIsProcessing(true);
+    setIsClaiming(true);
     try {
       const Saving_Contract = await SAVING_CONTRACT_INSTANCE();
       const tx = await Saving_Contract.claimPayout(groupId);
@@ -277,8 +273,7 @@ const MyGroups: React.FC<MyGroupsProps> = ({ myGroups, setActiveTab, onRefreshDa
         description: "Payout claimed successfully!",
       });
       
-      fetchAllGroupDetails();
-      onRefreshData();
+ 
     } catch (error) {
       console.error('Claim payout error:', error);
       toast({
@@ -287,7 +282,7 @@ const MyGroups: React.FC<MyGroupsProps> = ({ myGroups, setActiveTab, onRefreshDa
         variant: "destructive"
       });
     }
-    setIsProcessing(false);
+    setIsClaiming(false);
   };
 
   // Handler for generating invite code - copied from AjoEsusuInterface
@@ -686,10 +681,10 @@ const MyGroups: React.FC<MyGroupsProps> = ({ myGroups, setActiveTab, onRefreshDa
                     {isCurrentRecipient && (details.isActive || group[10]) && (
                       <Button
                         onClick={() => handleClaimPayout(groupId)}
-                        disabled={isProcessing}
+                        disabled={isClaiming}
                         className="bg-emerald-600 text-white px-4 py-2 rounded-lg hover:bg-emerald-700 transition-colors disabled:opacity-50"
                       >
-                        {isProcessing ? 'Processing...' : 'Claim Payout'}
+                        {isClaiming ? 'Claiming...' : 'Claim Payout'}
                       </Button>
                     )}
 

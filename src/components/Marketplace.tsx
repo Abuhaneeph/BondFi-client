@@ -38,20 +38,14 @@ const Marketplace = () => {
   const [showInstallmentsOnly, setShowInstallmentsOnly] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('all');
-  const [loading, setLoading] = useState(false);
-  const [notification, setNotification] = useState(null);
-  const [approving, setApproving] = useState(false);
 
-  // State for products and purchase
+  const [notification, setNotification] = useState(null);
+  const [loading, setLoading] = useState({});
+  const [approving, setApproving] = useState({});
+
+  // State for products and individual purchase forms
   const [products, setProducts] = useState([]);
-  const [purchaseForm, setPurchaseForm] = useState({
-    productId: '',
-    paymentToken: 'USDC',
-    quantity: 1,
-    isInstallment: false,
-    downPayment: '',
-    numberOfInstallments: 6
-  });
+  const [productPurchaseForms, setProductPurchaseForms] = useState({});
 
   // Custom CSS for infinite scroll animation
   React.useEffect(() => {
@@ -100,6 +94,37 @@ const Marketplace = () => {
   // Duplicate brands for infinite scroll effect
   const infiniteBrands = [...brands, ...brands, ...brands];
 
+  // Initialize purchase form for a specific product
+  const initializePurchaseForm = (productIndex, acceptedTokens) => {
+    const defaultToken = acceptedTokens.length > 0 ? acceptedTokens[0].symbol : 'USDC';
+    return {
+      paymentToken: defaultToken,
+      quantity: 1,
+      isInstallment: false,
+      downPayment: '',
+      numberOfInstallments: 6
+    };
+  };
+
+  // Get purchase form for a specific product
+  const getPurchaseForm = (productIndex, acceptedTokens) => {
+    if (!productPurchaseForms[productIndex]) {
+      return initializePurchaseForm(productIndex, acceptedTokens);
+    }
+    return productPurchaseForms[productIndex];
+  };
+
+  // Update purchase form for a specific product
+  const updatePurchaseForm = (productIndex, updates) => {
+    setProductPurchaseForms(prev => ({
+      ...prev,
+      [productIndex]: {
+        ...prev[productIndex],
+        ...updates
+      }
+    }));
+  };
+
   // Load products from smart contract when connected
   useEffect(() => {
     if (isConnected) {
@@ -107,14 +132,32 @@ const Marketplace = () => {
     }
   }, [isConnected]);
 
+  // Initialize purchase forms when products are loaded
+  useEffect(() => {
+    const newForms = {};
+    products.forEach((product, index) => {
+      const acceptedTokensInfo = product.acceptedTokens?.map(addr => 
+        availableTokens.find(t => t.address === addr)
+      ).filter(Boolean) || [];
+      
+      if (!productPurchaseForms[index]) {
+        newForms[index] = initializePurchaseForm(index, acceptedTokensInfo);
+      }
+    });
+    
+    if (Object.keys(newForms).length > 0) {
+      setProductPurchaseForms(prev => ({ ...prev, ...newForms }));
+    }
+  }, [products, availableTokens]);
+
   const showNotification = (message, type = 'success') => {
     setNotification({ message, type });
     setTimeout(() => setNotification(null), 5000);
   };
 
   // Token approval function
-  const approveToken = async (tokenAddress, spenderAddress, amount) => {
-    setApproving(true);
+  const approveToken = async (tokenAddress, spenderAddress, amount, productId) => {
+    setApproving(prev => ({...prev, [productId]: true}));
     try {
       const tokenContract = await TEST_TOKEN_CONTRACT_INSTANCE(tokenAddress);
       const tx = await tokenContract.approve(spenderAddress, amount);
@@ -126,7 +169,7 @@ const Marketplace = () => {
       showNotification('Token approval failed: ' + error.message, 'error');
       return false;
     } finally {
-      setApproving(false);
+      setApproving(prev => ({...prev, [productId]: false}));
     }
   };
 
@@ -152,15 +195,19 @@ const Marketplace = () => {
       showNotification('Product not found', 'error');
       return;
     }
-    console.log('Product found:', product);
 
+    const acceptedTokensInfo = product.acceptedTokens?.map(addr => 
+      availableTokens.find(t => t.address === addr)
+    ).filter(Boolean) || [];
+
+    const purchaseForm = getPurchaseForm(productId, acceptedTokensInfo);
     const selectedToken = availableTokens.find(t => t.symbol === purchaseForm.paymentToken);
+    
     if (!selectedToken) {
       console.error('Selected payment token not found in available tokens');
       showNotification('Invalid payment token selected', 'error');
       return;
     }
-    console.log('Selected token:', selectedToken);
 
     // Check if the selected token is accepted by the product
     const isTokenAccepted = product.acceptedTokens?.includes(selectedToken.address);
@@ -169,42 +216,33 @@ const Marketplace = () => {
       showNotification('This payment token is not accepted for this product', 'error');
       return;
     }
-    console.log('Token is accepted by the product');
 
-    setLoading(true);
+    setLoading(prev => ({...prev, [productId]: true}));
     try {
       const contract = await MERCHANT_CORE_CONTRACT_INSTANCE();
-      console.log('Contract instance obtained:', contract);
-
-      console.log('Product price:', product.price);
-      console.log('Purchase quantity:', purchaseForm.quantity);
       
       // Convert purchaseForm.quantity to BigInt before multiplication
       const totalAmount = product.price * BigInt(purchaseForm.quantity);
-      console.log('Total amount in Wei:', totalAmount);
       
       // Convert to Wei if needed (assuming price is in token units)
       const amountToApprove = totalAmount.toString();
-      console.log('Amount to approve:', amountToApprove);
       
       // First approve the token
       const approved = await approveToken(
         selectedToken.address,
         CONTRACT_ADDRESSES.merchantCoreInstallmentAddress,
-        amountToApprove
+        amountToApprove,
+        productId
       );
-      console.log('Token approval result:', approved);
       
       if (!approved) {
-        console.error('Token approval failed');
-        setLoading(false);
+        setLoading(prev => ({...prev, [productId]: false}));
         return;
       }
 
       let tx;
       
       if (purchaseForm.isInstallment) {
-        console.log('Purchasing with installments');
         tx = await contract.purchaseProductWithInstallments(
           productId + 1,
           selectedToken.address,
@@ -213,7 +251,6 @@ const Marketplace = () => {
           purchaseForm.numberOfInstallments
         );
       } else {
-        console.log('Purchasing without installments');
         tx = await contract.purchaseProduct(
           productId + 1,
           selectedToken.address,
@@ -221,17 +258,24 @@ const Marketplace = () => {
         );
       }
       
-      console.log('Transaction sent:', tx);
       await tx.wait();
-      console.log('Transaction confirmed:', tx);
-
       showNotification('Product purchased successfully!');
       fetchProducts();
+      
+      // Reset the form for this product after successful purchase
+      const acceptedTokensInfo = product.acceptedTokens?.map(addr => 
+        availableTokens.find(t => t.address === addr)
+      ).filter(Boolean) || [];
+      setProductPurchaseForms(prev => ({
+        ...prev,
+        [productId]: initializePurchaseForm(productId, acceptedTokensInfo)
+      }));
+      
     } catch (error) {
       console.error('Error purchasing product:', error);
       showNotification('Error purchasing product: ' + error.message, 'error');
     }
-    setLoading(false);
+    setLoading(prev => ({...prev, [productId]: false}));
   };
 
   // Filter products based on installment preference and search
@@ -360,6 +404,13 @@ const Marketplace = () => {
                 availableTokens.find(t => t.address === addr)
               ).filter(Boolean) || [];
 
+              // Get the purchase form for this specific product
+              const purchaseForm = getPurchaseForm(index, acceptedTokensInfo);
+
+              // Check if this specific product is loading or approving
+              const isCurrentlyLoading = loading[index] || false;
+              const isCurrentlyApproving = approving[index] || false;
+
               return (
                 <Card key={index} className="hover:shadow-lg transition-shadow">
                   <CardContent className="p-0">
@@ -437,12 +488,12 @@ const Marketplace = () => {
                         </div>
                       )}
 
-                      {/* Purchase Controls */}
+                      {/* Purchase Controls - Individual for each product */}
                       {isConnected && acceptedTokensInfo.length > 0 && (
                         <div className="space-y-3 mb-4">
                           <select
                             value={purchaseForm.paymentToken}
-                            onChange={(e) => setPurchaseForm({...purchaseForm, paymentToken: e.target.value})}
+                            onChange={(e) => updatePurchaseForm(index, { paymentToken: e.target.value })}
                             className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm"
                           >
                             {acceptedTokensInfo.map((token) => (
@@ -456,7 +507,7 @@ const Marketplace = () => {
                             type="number"
                             min="1"
                             value={purchaseForm.quantity}
-                            onChange={(e) => setPurchaseForm({...purchaseForm, quantity: parseInt(e.target.value) || 1})}
+                            onChange={(e) => updatePurchaseForm(index, { quantity: parseInt(e.target.value) || 1 })}
                             placeholder="Quantity"
                             className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm"
                           />
@@ -466,7 +517,11 @@ const Marketplace = () => {
                               <input
                                 type="checkbox"
                                 checked={purchaseForm.isInstallment}
-                                onChange={(e) => setPurchaseForm({...purchaseForm, isInstallment: e.target.checked})}
+                                onChange={(e) => updatePurchaseForm(index, { 
+                                  isInstallment: e.target.checked,
+                                  // Clear down payment when switching to full payment
+                                  downPayment: e.target.checked ? purchaseForm.downPayment : ''
+                                })}
                                 className="w-4 h-4 text-blue-600 border-gray-300 rounded"
                               />
                               <span className="text-sm">Pay in Installments</span>
@@ -474,15 +529,26 @@ const Marketplace = () => {
                           )}
 
                           {purchaseForm.isInstallment && (
-                            <input
-                              type="number"
-                              min="1"
-                              max="24"
-                              value={purchaseForm.numberOfInstallments}
-                              onChange={(e) => setPurchaseForm({...purchaseForm, numberOfInstallments: parseInt(e.target.value) || 6})}
-                              placeholder="Number of installments"
-                              className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm"
-                            />
+                            <>
+                              <input
+                                type="number"
+                                min="1"
+                                max="24"
+                                value={purchaseForm.numberOfInstallments}
+                                onChange={(e) => updatePurchaseForm(index, { numberOfInstallments: parseInt(e.target.value) || 6 })}
+                                placeholder="Number of installments"
+                                className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm"
+                              />
+                              <input
+                                type="number"
+                                min="0"
+                                step="0.01"
+                                value={purchaseForm.downPayment}
+                                onChange={(e) => updatePurchaseForm(index, { downPayment: e.target.value })}
+                                placeholder="Down payment amount"
+                                className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm"
+                              />
+                            </>
                           )}
                         </div>
                       )}
@@ -495,10 +561,12 @@ const Marketplace = () => {
                               size="sm" 
                               className="flex-1"
                               onClick={() => handlePurchaseProduct(index)}
-                              disabled={loading || approving}
+                              disabled={isCurrentlyLoading || isCurrentlyApproving}
                             >
                               <ShoppingBag className="h-4 w-4 mr-2" />
-                              {loading || approving ? 'Processing...' : (purchaseForm.isInstallment ? 'Buy Installment' : 'Buy Full')}
+                              {isCurrentlyApproving ? 'Approving...' : 
+                               isCurrentlyLoading ? 'Processing...' : 
+                               (purchaseForm.isInstallment ? 'Buy Installment' : 'Buy Full')}
                             </Button>
                           ) : (
                             <Button variant="outline" size="sm" className="flex-1" disabled>
@@ -560,9 +628,6 @@ const Marketplace = () => {
           </div>
         </section>
       </main>
-
-      {/* Floating AI Chat Button */}
-      {/* Removed as per edit hint */}
     </div>
   );
 };

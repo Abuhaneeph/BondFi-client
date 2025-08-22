@@ -82,8 +82,8 @@ const TopNavbar = ({
 
   // Secondary navigation items (in "More" dropdown on desktop, full list on mobile)
   const secondaryNavigation = [
-    //{ name: 'Faucet', key: 'faucet', icon: Droplets },
-  //  { name: 'Admin', key: 'admin', icon: Shield },
+    { name: 'Faucet', key: 'faucet', icon: Droplets },
+    { name: 'Admin', key: 'admin', icon: Shield },
   ];
 
   const handleNotificationClick = () => {
@@ -145,9 +145,46 @@ const TopNavbar = ({
                 <span>{item.name}</span>
               </button>
             ))}
- 
-               
-     
+            {/* More Dropdown */}
+            <div className="relative">
+              <button
+                onClick={() => setShowMoreMenu(!showMoreMenu)}
+                className={cn(
+                  'flex items-center space-x-2 px-3 py-2 rounded-lg transition-all duration-200 text-sm font-medium select-none',
+                  isCurrentPageInSecondary
+                    ? 'text-terracotta font-bold'
+                    : 'text-stone-700 hover:bg-stone-100 hover:text-terracotta'
+                )}
+              >
+                <span>More</span>
+                <ChevronDown className="w-3 h-3" />
+              </button>
+              {/* More Dropdown Menu */}
+              {showMoreMenu && (
+                <div 
+                  ref={moreMenuRef}
+                  className="absolute z-50 top-full right-0 mt-2 w-48 bg-white rounded-lg shadow-lg border border-stone-200 py-1"
+                >
+                  {secondaryNavigation.map((item) => (
+                    <button
+                      key={item.key}
+                      onClick={() => {
+                        onPageChange(item.key);
+                        setShowMoreMenu(false);
+                      }}
+                      className={cn(
+                        'flex items-center space-x-3 w-full px-4 py-2 text-left text-sm transition-colors select-none',
+                        currentPage === item.key
+                          ? 'text-terracotta font-bold'
+                          : 'text-stone-700 hover:bg-stone-50'
+                      )}
+                    >
+                      <span>{item.name}</span>
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
           </nav>
           {/* Right side icons - Desktop only */}
           <div className="hidden lg:flex items-center space-x-2 ml-auto">
