@@ -1,48 +1,36 @@
 # BondFi - Decentralized Community Finance & Commerce Platform
 
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
-[![React](https://img.shields.io/badge/React-18.3.1-blue.svg)](https://reactjs.org/)
-[![TypeScript](https://img.shields.io/badge/TypeScript-5.5.3-blue.svg)](https://www.typescriptlang.org/)
-[![Vite](https://img.shields.io/badge/Vite-5.4.1-purple.svg)](https://vitejs.dev/)
-[![Tailwind CSS](https://img.shields.io/badge/Tailwind-3.4.11-38B2AC.svg)](https://tailwindcss.com/)
 
 ## 🌟 Overview
 
-**BondFi** is a revolutionary decentralized finance (DeFi) platform that combines traditional African community savings practices (ROSCAs) with modern blockchain technology. The platform enables users to participate in automated rotating savings circles, build credit through community trust, and make secure payments to local merchants using cryptocurrency.
-
+**BondFi** is a decentralized finance (DeFi) platform that merges traditional African community savings practices (Ajo/Esusu/ROSCAs) with modern blockchain technology. Built on Mantle Sepolia, it enables users to join automated rotating savings circles, access installment-based commerce at partner merchants, and manage finances across multiple stablecoins. Powered by Chainlink price feeds and on-chain credit scoring, BondFi also integrates AI-driven financial insights and recommendations, making it a truly borderless ROSCA ecosystem
 ## 🚀 Key Features
 
-### 💰 **Automated ROSCAs (Community Savings)**
-- **Smart Contract Automation**: Join rotating savings circles with transparent, automated payouts
-- **Flexible Schedules**: Choose from 5-minute, daily, weekly, bi-weekly, or monthly contribution cycles
-- **Community Accountability**: Blockchain-secured trust system with peer verification
-- **Transparent Payouts**: Automated distribution of pooled funds with smart contract execution
+### 💰 **Rotational Savings (Ajo/Esusu)**
+- **Smart Contract Automation**: Create and join rotating savings groups with transparent, automated payouts
+- **Flexible Parameters**: Customize contribution amounts, frequencies (daily, weekly, bi-weekly, monthly), and group sizes
+- **Multi-Currency Support**: Deposit and contribute in various African stablecoins with automatic conversion
+- **Agent Management**: Register and track trusted agents to facilitate group operations
+- **Community Trust**: Blockchain-secured transparency with invitation-based group membership
 
-### 🏪 **Merchant Network & Marketplace**
-- **500+ Partner Merchants**: Shop at verified local merchants across Africa
-- **Installment Payments**: Structured payment plans with zero traditional credit checks
-- **Secure Transactions**: On-chain payment processing with smart contract escrow
-- **Product Catalog**: Comprehensive marketplace with electronics, furniture, and more
+### 🏪 **Merchant Network & E-commerce**
+- **Merchant Registration**: Complete onboarding system with business verification and categorization
+- **Product Catalog**: Comprehensive product listing with inventory management and search functionality
+- **Installment Payments**: Flexible payment plans with configurable down payments and terms
+- **Credit Assessment**: Eligibility based on savings group participation history
+- **Multi-Token Support**: Accept payments in various stablecoins
+  
+### 💱 **Multi-Currency System**
+- **Automatic Conversion**: Seamless currency conversion between local stablecoins and base currencies
+- **Supported Currencies**: USDT, WETH, AFR, AFX, cNGN, cZAR, cGHS, cKES
+- **Price Feed Integration**: Real-time exchange rates using Chainlink oracles
+- **Flexible Payouts**: Receive savings payouts in your preferred currency
 
-### 💱 **DeFi Trading & Liquidity**
-- **Token Swapping**: Seamless token exchange with automated market making
-- **Liquidity Provision**: Earn rewards by providing liquidity to trading pools
-- **Multi-Token Support**: Trade between African stablecoins and major cryptocurrencies
-- **Price Feeds**: Real-time price data from decentralized oracles
-
-### 🏦 **Savings & Credit Building**
-- **Multi-Token Savings**: Save in various African stablecoins (cNGN, cZAR, cGHS, cKES)
-- **Credit Scoring**: Build on-chain credit through consistent savings and payment history
-- **Interest Earning**: Earn returns on your savings through DeFi protocols
-- **Flexible Withdrawals**: Access your funds anytime with transparent fee structure
-
-### 🔄 **Cross-Border Remittances**
-- **Family Transfers**: Send money to family members across borders
-- **Low-Cost Transfers**: Minimal fees compared to traditional remittance services
-- **Instant Settlement**: Near-instant cross-border transfers using blockchain
-- **Multi-Currency Support**: Support for major African currencies
-
-
+### 🏦 **Community Finance**
+- **Group Savings**: Participate in traditional rotating savings circles (Ajo/Esusu) with modern security
+- **Credit Building**: Build reputation through consistent participation and timely payments
+- **Agent Network**: Trusted agents facilitate group management and provide local support
+- **Transparent Operations**: All transactions and group activities recorded on-chain
 
 ## 🏗️ Architecture
 
@@ -54,23 +42,23 @@
 - **React Router** for client-side routing
 
 ### **Blockchain Integration**
-- **Ethers.js** for Ethereum interaction
+- **Ethers.js** for Mantle interaction
 - **Wagmi** for wallet connection and management
 - **Thirdweb** for enhanced Web3 functionality
-- **Mantle Network** as the primary blockchain (Sepolia testnet)
+- **Mantle Network** as the primary blockchain
 
 ### **Smart Contracts**
-- **ROSCA/Savings Contract**: Manages community savings circles
-- **Swap Contract**: Handles token exchanges and liquidity
-- **Merchant Contracts**: Manages merchant registration and installment payments
-- **Price Feed Contract**: Provides real-time token pricing
-- **AfriStable Contract**: African stablecoin management
+- **Rotational Savings Core**: Manages community savings groups and contributions
+- **Multi-Currency Wrapper**: Handles automatic currency conversion and multi-token support
+- **Merchant Registry**: Manages merchant onboarding and verification
+- **Product Catalog**: Handles product listings and inventory management
+- **Installment Manager**: Processes installment payments and credit assessment
+- **Swap Contract**: Provides currency conversion between supported tokens
 
 ### **Supported Tokens**
-- **Native**: MNT (Mantle)
-- **Stablecoins**: USDT, WETH
-- **African Stablecoins**: AFR (AfriRemit), AFX (AfriStable)
-- **Local Currencies**: cNGN (Crypto Naira), cZAR (Crypto Rand), cGHS (Crypto Cedi), cKES (Crypto Shilling)
+- **Global Stablecoin/Tokens**: USDT, WETH
+- **African Tokens**: AFR (AfriRemit), AFX (AfriStable)
+- **Local Stablecoins**: cNGN (Crypto Naira), cZAR (Crypto Rand), cGHS (Crypto Cedi), cKES (Crypto Shilling)
 
 ## 🚀 Getting Started
 
@@ -130,32 +118,32 @@
 
 ## 📱 Usage Guide
 
-### **Joining a ROSCA Group**
+### **Creating/Joining Savings Groups**
 1. Navigate to the **Savings** section
-2. Choose **"Join Group"** or **"Create Group"**
-3. Set contribution amount and frequency
-4. Invite members or join existing groups
-5. Start contributing and earning
+2. Choose **"Create Group"** with custom parameters or **"Join Group"** with invitation code
+3. Set contribution amount, frequency, and group size (for creators)
+4. Select your preferred currency for contributions and payouts
+5. Start contributing according to the group schedule
 
-### **Trading Tokens**
-1. Go to the **Swap** interface
-2. Select tokens to exchange
-3. Set amount and review rates
-4. Approve tokens and execute swap
-5. Monitor transaction status
+### **Multi-Currency Operations**
+1. **Set Preferred Currency**: Choose your local stablecoin for contributions
+2. **Automatic Conversion**: Contributions are automatically converted to the group's base currency
+3. **Flexible Payouts**: Receive payouts in your preferred currency
+4. **Real-time Rates**: View current exchange rates before transactions
 
-### **Shopping on Marketplace**
+### **Shopping with Installments**
 1. Browse products in the **Marketplace**
-2. Select items with installment options
-3. Choose payment plan (weekly/monthly)
-4. Complete purchase with crypto
-5. Make regular payments until fully paid
+2. Select items and choose **"Buy with Installments"**
+3. Check your credit eligibility based on savings history
+4. Configure down payment and installment terms
+5. Complete purchase and make regular payments
 
-### **Building Credit**
-1. **Consistent Savings**: Regular contributions to ROSCA groups
-2. **Timely Payments**: Pay installments on time
-3. **Community Participation**: Active engagement in savings circles
-4. **Transaction History**: Build reputation through on-chain activity
+### **Merchant Operations**
+1. **Register as Merchant**: Complete business verification process
+2. **List Products**: Add products with images, descriptions, and pricing
+3. **Configure Installments**: Set minimum down payments and payment terms
+4. **Manage Inventory**: Track stock levels and update product availability
+5. **Monitor Sales**: View sales analytics and customer payment history
 
 ## 🔧 Development
 
@@ -163,11 +151,12 @@
 ```
 src/
 ├── components/          # React components
-│   ├── ROSCA/          # Community savings functionality
-│   ├── dashboard/      # User dashboard components
-│   ├── home/           # Landing page components
-│   ├── layout/         # Layout and navigation
-│   └── ui/             # Reusable UI components
+│   ├── savings/         # Rotational savings functionality
+│   ├── merchant/        # Merchant and marketplace components
+│   ├── dashboard/       # User dashboard components
+│   ├── home/            # Landing page components
+│   ├── layout/          # Layout and navigation
+│   └── ui/              # Reusable UI components
 ├── provider/            # Web3 and contract providers
 ├── lib/                 # Utilities and configurations
 │   ├── ABI/            # Smart contract ABIs
@@ -183,25 +172,27 @@ src/
 - `npm run lint` - Run ESLint
 - `npm run preview` - Preview production build
 
-### **Smart Contract Deployment**
-The platform uses pre-deployed contracts on Mantle Sepolia testnet:
-- **Swap Contract**: `0x013b0CA4E4559339F43682B7ac05479eD48E694f`
-- **Savings Contract**: `0xC0c182d9895882C61C1fC1DF20F858e5E29a4f71`
-- **Merchant Core**: `0xD182cBE8f2C03d230fcc578811CAf591BFB24e99`
+
 
 ## 🌍 Impact & Vision
 
 ### **Financial Inclusion**
-- **Democratizing Access**: Bring DeFi to underserved African communities
-- **Community Trust**: Leverage traditional social structures for financial services
-- **Credit Building**: Enable access to credit without traditional banking requirements
-- **Cross-Border**: Facilitate remittances and international trade
+- **Democratizing Access**: Bring traditional community savings practices to blockchain
+- **Multi-Currency Support**: Enable savings and commerce in local currencies
+- **Agent Network**: Leverage trusted community members for user onboarding and support
+- **Credit Building**: Build financial reputation through consistent savings participation
 
 ### **Economic Empowerment**
-- **Local Commerce**: Support African merchants with digital payment solutions
-- **Savings Culture**: Promote financial literacy and long-term wealth building
-- **Job Creation**: Enable new business models and employment opportunities
-- **Economic Growth**: Contribute to local and regional economic development
+- **Local Commerce**: Support African merchants with crypto payment solutions
+- **Installment Access**: Enable purchases without traditional credit requirements
+- **Community Trust**: Maintain social bonds while adding technological transparency
+- **Cross-Border**: Facilitate international commerce and remittances
+
+### **Technology Innovation**
+- **Smart Contract Automation**: Replace manual group management with transparent automation
+- **Multi-Currency Conversion**: Seamless currency handling for diverse user needs
+- **On-Chain Credit**: Build credit scores based on blockchain activity
+- **Mobile-First**: Designed for smartphone users across Africa
 
 ## 🤝 Contributing
 
@@ -210,28 +201,25 @@ We welcome contributions from the community! Please see our [Contributing Guidel
 ### **Areas for Contribution**
 - **Smart Contract Development**: Enhance existing contracts or add new features
 - **Frontend Development**: Improve UI/UX and add new components
-- **Testing**: Write tests and improve test coverage
+- **Multi-Currency Support**: Add new African stablecoins and tokens
+- **Testing**: Write comprehensive tests for all features
 - **Documentation**: Enhance documentation and create tutorials
-- **Localization**: Add support for more African languages and currencies
+- **Localization**: Add support for more African languages
 
 ## 📄 License
 
 This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
 
-## 🔗 Links
-
-- **Website**: [https://bondfi.vercel.app/](https://bondfi.vercel.app/)
-- **Documentation**: [https://docs.bondfi.com](https://docs.bondfi.com)
-- **Discord**: [Join our community](https://discord.gg/bondfi)
-- **Twitter**: [@BondFi_DeFi](https://twitter.com/BondFi_DeFi)
 
 ## 🙏 Acknowledgments
 
-- **African ROSCA Communities** for inspiration and traditional wisdom
-- **Mantle Network** for blockchain infrastructure
-- **Thirdweb** for Web3 development tools
+- **ROSCA Communities** for inspiration and traditional financial wisdom
+- **Mantle Network** for blockchain infrastructure and support
+- **Thirdweb** for Web3 development tools and SDKs
+- **OpenZeppelin** for secure smart contract libraries
+- **Chainlink** for reliable price feed infrastructure
 - **Open Source Community** for the amazing tools and libraries
 
 ---
 
-**BondFi** - Empowering African communities through decentralized finance and commerce. 🌍💚
+**BondFi** - Empowering African communities through decentralized savings and commerce. 🌍💚
